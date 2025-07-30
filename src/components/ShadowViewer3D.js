@@ -3,6 +3,11 @@ import * as THREE from 'three';
 
 const ShadowViewer3D = ({ 
   buildingHeight = 20, 
+  buildingWidth = 20,
+  buildingDepth = 30,
+  solarBuildingHeight = 10,
+  solarBuildingWidth = 50,
+  solarBuildingDepth = 30,
   buildingDistance = 30, 
   panelTilt = 30, 
   panelAzimuth = 180,
@@ -79,13 +84,34 @@ const ShadowViewer3D = ({
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // 건물 생성
-    const buildingGeometry = new THREE.BoxGeometry(15, buildingHeight, 10);
+    // 그림자를 만드는 높은 건물 생성 (실제 크기)
+    const buildingGeometry = new THREE.BoxGeometry(
+      buildingWidth || 20, 
+      buildingHeight, 
+      buildingDepth || 30
+    );
     const buildingMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
     const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
     building.position.set(-buildingDistance, buildingHeight / 2, 0);
     building.castShadow = true;
     scene.add(building);
+
+    // 태양광 패널이 설치된 건물 생성 (실제 크기)
+    const solarBuildingGeometry = new THREE.BoxGeometry(
+      solarBuildingWidth || 50,
+      solarBuildingHeight || 10,
+      solarBuildingDepth || 30
+    );
+    const solarBuildingMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0x4682B4,
+      transparent: true,
+      opacity: 0.7
+    });
+    const solarBuilding = new THREE.Mesh(solarBuildingGeometry, solarBuildingMaterial);
+    solarBuilding.position.set(25, (solarBuildingHeight || 10) / 2, 0);
+    solarBuilding.castShadow = true;
+    solarBuilding.receiveShadow = true;
+    scene.add(solarBuilding);
 
     // 태양광 패널 그룹 생성
     const panelGroup = new THREE.Group();
@@ -141,10 +167,12 @@ const ShadowViewer3D = ({
       }
     }
     
+    // 패널 그룹을 태양광 설치 건물 위에 배치
+    panelGroup.position.set(25, solarBuildingHeight + 0.5, 0); // 건물 위 0.5m
     scene.add(panelGroup);
 
-    // 태양 표시
-    const sunGeometry = new THREE.SphereGeometry(2, 16, 16);
+    // 태양 표시 (더 크게)
+    const sunGeometry = new THREE.SphereGeometry(8, 32, 32);
     const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFF00 });
     const sun = new THREE.Mesh(sunGeometry, sunMaterial);
     sun.position.copy(sunLight.position);
@@ -235,7 +263,7 @@ const ShadowViewer3D = ({
       }
       renderer.dispose();
     };
-  }, [buildingHeight, buildingDistance, panelTilt, panelAzimuth, currentTime, viewMode]);
+  }, [buildingHeight, buildingWidth, buildingDepth, solarBuildingHeight, solarBuildingWidth, solarBuildingDepth, buildingDistance, panelTilt, panelAzimuth, currentTime, viewMode]);
 
   const handleViewModeChange = (mode) => {
     setViewMode(mode);
@@ -387,13 +415,23 @@ const ShadowViewer3D = ({
         )}
 
         {/* 현재 설정 표시 */}
-        <div className="absolute top-4 left-4 bg-black/70 text-white text-xs p-3 rounded">
-          <p className="font-semibold mb-2">현재 설정</p>
-          <p>건물 높이: {buildingHeight}m</p>
-          <p>건물 거리: {buildingDistance}m</p>
-          <p>패널 각도: {panelTilt}°</p>
-          <p>현재 시간: {currentTime}시</p>
-          <p>예상 손실률: {shadowLoss.toFixed(1)}%</p>
+        <div className="absolute top-4 left-4 bg-black/70 text-white text-xs p-3 rounded max-w-xs">
+          <p className="font-semibold mb-2">🏢 건물 정보</p>
+          <div className="mb-2">
+            <p className="text-orange-300 font-medium">그림자 건물:</p>
+            <p>• 크기: {buildingWidth}×{buildingDepth}×{buildingHeight}m</p>
+            <p>• 거리: {buildingDistance}m</p>
+          </div>
+          <div className="mb-2">
+            <p className="text-blue-300 font-medium">태양광 건물:</p>
+            <p>• 크기: {solarBuildingWidth}×{solarBuildingDepth}×{solarBuildingHeight}m</p>
+          </div>
+          <div>
+            <p className="text-yellow-300 font-medium">시뮬레이션:</p>
+            <p>• 현재 시간: {currentTime}시</p>
+            <p>• 패널 각도: {panelTilt}°</p>
+            <p>• 예상 손실률: {shadowLoss.toFixed(1)}%</p>
+          </div>
         </div>
       </div>
     </div>

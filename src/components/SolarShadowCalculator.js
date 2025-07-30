@@ -40,8 +40,16 @@ const SolarShadowCalculator = () => {
 
   // 입력 값들 상태 관리
   const [inputs, setInputs] = useState({
+    // 그림자를 만드는 높은 건물
     buildingHeight: 15, // 높은 건물 높이 (m)
+    buildingWidth: 20, // 높은 건물 폭 (m)
+    buildingDepth: 30, // 높은 건물 깊이 (m)
+    
+    // 태양광 패널이 설치된 건물
     solarBuildingHeight: 10, // 태양광 설치 건물 높이 (m)
+    solarBuildingWidth: 50, // 태양광 설치 건물 폭 (m)
+    solarBuildingDepth: 30, // 태양광 설치 건물 깊이 (m)
+    
     distance: 20, // 건물 간 거리 (m)
     panelWidth: 10, // 태양광 패널 폭 (m)
     panelDepth: 8, // 태양광 패널 높이 (m)
@@ -610,58 +618,120 @@ const SolarShadowCalculator = () => {
           </h2>
           
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={`block text-sm font-medium text-gray-300 mb-1`}>
-                  높은 건물 높이 (m)
-                </label>
-                <input
-                  type="number"
-                  value={inputs.buildingHeight}
-                  onChange={(e) => handleInputChange('buildingHeight', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm ${inputClass}`}
-                />
+            {/* 높은 건물 정보 섹션 */}
+            <div className="bg-red-900/20 p-3 rounded-lg border border-red-700/30">
+              <h4 className="text-sm font-semibold text-red-300 mb-3 flex items-center">
+                <Building className="w-4 h-4 mr-2" />
+                그림자를 만드는 높은 건물
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={`block text-sm font-medium text-gray-300 mb-1`}>
+                    높이 (m)
+                  </label>
+                  <input
+                    type="number"
+                    value={inputs.buildingHeight}
+                    onChange={(e) => handleInputChange('buildingHeight', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm ${inputClass}`}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium text-gray-300 mb-1`}>
+                    건물 간 거리 (m)
+                  </label>
+                  <input
+                    type="number"
+                    value={inputs.distance}
+                    onChange={(e) => handleInputChange('distance', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm ${inputClass}`}
+                  />
+                </div>
               </div>
-              <div>
-                <label className={`block text-sm font-medium text-gray-300 mb-1`}>
-                  태양광 건물 높이 (m)
-                </label>
-                <input
-                  type="number"
-                  value={inputs.solarBuildingHeight}
-                  onChange={(e) => handleInputChange('solarBuildingHeight', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm ${inputClass}`}
-                />
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label className={`block text-sm font-medium text-gray-300 mb-1`}>
+                    폭 (m)
+                  </label>
+                  <input
+                    type="number"
+                    value={inputs.buildingWidth}
+                    onChange={(e) => handleInputChange('buildingWidth', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm ${inputClass}`}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium text-gray-300 mb-1`}>
+                    깊이 (m)
+                  </label>
+                  <input
+                    type="number"
+                    value={inputs.buildingDepth}
+                    onChange={(e) => handleInputChange('buildingDepth', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm ${inputClass}`}
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={`block text-sm font-medium text-gray-300 mb-1`}>
-                  건물 간 거리 (m)
-                </label>
-                <input
-                  type="number"
-                  value={inputs.distance}
-                  onChange={(e) => handleInputChange('distance', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm ${inputClass}`}
-                />
+            {/* 태양광 설치 건물 정보 섹션 */}
+            <div className="bg-blue-900/20 p-3 rounded-lg border border-blue-700/30">
+              <h4 className="text-sm font-semibold text-blue-300 mb-3 flex items-center">
+                <Sun className="w-4 h-4 mr-2" />
+                태양광 패널이 설치된 건물
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={`block text-sm font-medium text-gray-300 mb-1`}>
+                    높이 (m)
+                  </label>
+                  <input
+                    type="number"
+                    value={inputs.solarBuildingHeight}
+                    onChange={(e) => handleInputChange('solarBuildingHeight', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm ${inputClass}`}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium text-gray-300 mb-1`}>
+                    지역 선택
+                  </label>
+                  <select
+                    value={inputs.selectedCity}
+                    onChange={(e) => handleCityChange(e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm ${inputClass}`}
+                  >
+                    {koreaLatitudes.map((item) => (
+                      <option key={item.city} value={item.city}>
+                        {item.city} ({item.latitude}°)
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className={`block text-sm font-medium text-gray-300 mb-1`}>
-                  지역 선택
-                </label>
-                <select
-                  value={inputs.selectedCity}
-                  onChange={(e) => handleCityChange(e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm ${inputClass}`}
-                >
-                  {koreaLatitudes.map((item) => (
-                    <option key={item.city} value={item.city}>
-                      {item.city} ({item.latitude}°)
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label className={`block text-sm font-medium text-gray-300 mb-1`}>
+                    폭 (m)
+                  </label>
+                  <input
+                    type="number"
+                    value={inputs.solarBuildingWidth}
+                    onChange={(e) => handleInputChange('solarBuildingWidth', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm ${inputClass}`}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium text-gray-300 mb-1`}>
+                    깊이 (m)
+                  </label>
+                  <input
+                    type="number"
+                    value={inputs.solarBuildingDepth}
+                    onChange={(e) => handleInputChange('solarBuildingDepth', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm ${inputClass}`}
+                  />
+                </div>
               </div>
             </div>
 
@@ -1051,6 +1121,11 @@ const SolarShadowCalculator = () => {
             <div>
               <ShadowViewer3D
                 buildingHeight={inputs.buildingHeight}
+                buildingWidth={inputs.buildingWidth}
+                buildingDepth={inputs.buildingDepth}
+                solarBuildingHeight={inputs.solarBuildingHeight}
+                solarBuildingWidth={inputs.solarBuildingWidth}
+                solarBuildingDepth={inputs.solarBuildingDepth}
                 buildingDistance={inputs.distance}
                 panelTilt={inputs.panelTilt}
                 panelAzimuth={inputs.panelOrientation}
