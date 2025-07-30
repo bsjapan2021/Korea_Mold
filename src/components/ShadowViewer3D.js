@@ -26,6 +26,8 @@ const ShadowViewer3D = ({
   const [viewMode, setViewMode] = useState('overview'); // overview, heatmap, animation
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationTime, setAnimationTime] = useState(6); // 6시부터 시작
+  const [isLooping, setIsLooping] = useState(false); // 반복 애니메이션 옵션
+  const [animationSpeed, setAnimationSpeed] = useState(1); // 애니메이션 속도 (1 = 기본)
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -301,10 +303,16 @@ const ShadowViewer3D = ({
       
       const animate = () => {
         setAnimationTime(prevTime => {
-          currentTime = prevTime + 0.1;
+          currentTime = prevTime + (0.1 * animationSpeed); // 속도 적용
           if (currentTime > 18) {
-            setIsAnimating(false);
-            return 6;
+            if (isLooping) {
+              // 반복 모드: 다시 6시부터 시작
+              return 6;
+            } else {
+              // 단일 실행 모드: 애니메이션 정지
+              setIsAnimating(false);
+              return 6;
+            }
           }
           
           if (sunLightRef.current && sunRef.current) {
@@ -330,7 +338,7 @@ const ShadowViewer3D = ({
       
       animate();
     }
-  }, [isAnimating]);
+  }, [isAnimating, isLooping, animationSpeed]);
 
   const stopAnimation = useCallback(() => {
     setIsAnimating(false);
@@ -373,7 +381,7 @@ const ShadowViewer3D = ({
         
         {/* 애니메이션 컨트롤 */}
         {viewMode === 'animation' && (
-          <div className="flex items-center gap-2 ml-4">
+          <div className="flex items-center gap-2 ml-4 flex-wrap">
             <button
               onClick={startAnimation}
               disabled={isAnimating}
@@ -388,10 +396,45 @@ const ShadowViewer3D = ({
             >
               ⏹️ 정지
             </button>
+            
+            {/* 반복 옵션 */}
+            <label className="flex items-center gap-1 text-white text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isLooping}
+                onChange={(e) => setIsLooping(e.target.checked)}
+                className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+              />
+              🔄 반복
+            </label>
+            
+            {/* 속도 조절 */}
+            <div className="flex items-center gap-1 text-white text-sm">
+              <span>⚡</span>
+              <select
+                value={animationSpeed}
+                onChange={(e) => setAnimationSpeed(Number(e.target.value))}
+                disabled={isAnimating}
+                className="bg-gray-700 border-gray-600 text-white text-xs rounded px-1 py-0.5 disabled:bg-gray-600"
+              >
+                <option value={0.5}>0.5x</option>
+                <option value={1}>1x</option>
+                <option value={2}>2x</option>
+                <option value={4}>4x</option>
+              </select>
+            </div>
+            
             {isAnimating && (
-              <span className="text-white text-sm">
-                시간: {animationTime.toFixed(1)}시
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-white text-sm">
+                  시간: {animationTime.toFixed(1)}시
+                </span>
+                {isLooping && (
+                  <span className="text-blue-300 text-xs bg-blue-900/30 px-2 py-1 rounded">
+                    무한반복
+                  </span>
+                )}
+              </div>
             )}
           </div>
         )}
