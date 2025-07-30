@@ -2,6 +2,9 @@
 
 건물 방향과 패널 각도를 고려한 정밀한 태양광 패널 그림자 분석 도구입니다.
 
+## 🌐 온라인 데모
+**https://solar-shadow-calculator-ra8al3elp-seunghyeos-projects.vercel.app**
+
 ## 주요 기능
 
 - **3D 그림자 계산**: 태양의 고도각과 방위각을 고려한 정확한 그림자 길이 계산
