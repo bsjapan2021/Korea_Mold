@@ -46,6 +46,12 @@ const SolarShadowCalculator = () => {
     distance: 20, // 건물 간 거리 (m)
     panelWidth: 10, // 태양광 패널 폭 (m)
     panelDepth: 8, // 태양광 패널 깊이 (m)
+    roofWidth: 50, // 옥상 전체 폭 (m)
+    roofDepth: 30, // 옥상 전체 깊이 (m)
+    panelCount: 150, // 총 패널 수량
+    panelRows: 15, // 패널 행 수
+    panelCols: 10, // 패널 열 수
+    rowSpacing: 2, // 패널 행 간격 (m)
     latitude: 37.5665, // 위도 (서울 기준)
     selectedCity: '서울', // 선택된 도시
     month: 6, // 월
@@ -172,6 +178,86 @@ const SolarShadowCalculator = () => {
     };
   };
 
+  // 다중 패널 시스템 차폐 분석
+  const calculateMultiPanelShading = (shadowData, inputs, solarAzimuth) => {
+    const { effectiveShadow } = shadowData;
+    const { distance, roofDepth, panelRows, panelCols, panelDepth, panelTilt, panelOrientation } = inputs;
+    
+    // 그림자가 건물에 도달하지 않는 경우
+    if (effectiveShadow <= distance) {
+      return {
+        totalAffectedPanels: 0,
+        affectedPercentage: 0,
+        averageShadingPercentage: 0,
+        totalPowerLoss: 0,
+        shadingMap: Array(panelRows).fill().map(() => Array(panelCols).fill(0))
+      };
+    }
+
+    // 그림자가 옥상에 도달하는 길이
+    const shadowOnRoof = effectiveShadow - distance;
+    
+    // 패널 배치 분석
+    const panelSpacingDepth = (roofDepth - (panelRows * panelDepth)) / (panelRows - 1);
+    
+    let affectedPanels = 0;
+    let totalShadingLoss = 0;
+    const shadingMap = [];
+    
+    // 각 패널별 차폐율 계산
+    for (let row = 0; row < panelRows; row++) {
+      const rowShadingData = [];
+      
+      // 행의 위치 (옥상 가장 가까운 곳부터)
+      const rowPosition = row * (panelDepth + panelSpacingDepth);
+      
+      for (let col = 0; col < panelCols; col++) {
+        // 이 패널 위치에서의 그림자 영향 계산
+        let panelShadingPercentage = 0;
+        
+        if (shadowOnRoof > rowPosition) {
+          // 그림자가 이 행에 도달함
+          const shadowDepthOnThisRow = Math.min(shadowOnRoof - rowPosition, panelDepth);
+          
+          // 패널 방향에 따른 영향 보정
+          const panelAngleDiff = getAngleDifference(solarAzimuth, panelOrientation);
+          const orientationFactor = Math.max(0, Math.cos(panelAngleDiff * Math.PI / 180));
+          
+          // 패널 기울기에 따른 보정
+          const tiltFactor = Math.cos(panelTilt * Math.PI / 180);
+          const adjustedShadowDepth = shadowDepthOnThisRow * tiltFactor;
+          
+          // 차폐율 계산
+          const baseShadingRatio = Math.min(adjustedShadowDepth / panelDepth, 1);
+          panelShadingPercentage = baseShadingRatio * orientationFactor * 100;
+          
+          if (panelShadingPercentage > 5) { // 5% 이상 차폐된 패널만 카운트
+            affectedPanels++;
+          }
+          
+          totalShadingLoss += panelShadingPercentage;
+        }
+        
+        rowShadingData.push(panelShadingPercentage);
+      }
+      
+      shadingMap.push(rowShadingData);
+    }
+    
+    const totalPanels = panelRows * panelCols;
+    const averageShadingPercentage = totalShadingLoss / totalPanels;
+    
+    return {
+      totalAffectedPanels: affectedPanels,
+      affectedPercentage: (affectedPanels / totalPanels) * 100,
+      averageShadingPercentage: averageShadingPercentage,
+      totalPowerLoss: averageShadingPercentage,
+      shadingMap: shadingMap,
+      totalPanels: totalPanels,
+      shadowOnRoof: shadowOnRoof
+    };
+  };
+
   // 발전량 손실 계산 (개선된 모델)
   const calculateAdvancedPowerLoss = (shadingData, elevation) => {
     const { shadingPercentage, directImpact } = shadingData;
@@ -210,6 +296,8 @@ const SolarShadowCalculator = () => {
       inputs.buildingOrientation, 
       inputs.distance
     );
+    
+    // 단일 패널 계산 (기존 방식)
     const shadingData = calculateAdvancedShading(
       shadowData, 
       inputs.distance, 
@@ -218,6 +306,9 @@ const SolarShadowCalculator = () => {
       azimuth, 
       inputs.panelTilt
     );
+    
+    // 다중 패널 시스템 계산 (새로운 방식)
+    const multiPanelData = calculateMultiPanelShading(shadowData, inputs, azimuth);
     const powerLoss = calculateAdvancedPowerLoss(shadingData, elevation);
 
     setResults({
@@ -229,7 +320,17 @@ const SolarShadowCalculator = () => {
       shadingPercentage: shadingData.shadingPercentage.toFixed(1),
       powerLoss: powerLoss.toFixed(1),
       directImpact: shadingData.directImpact,
-      orientationFactor: (shadingData.orientationFactor * 100).toFixed(1)
+      orientationFactor: (shadingData.orientationFactor * 100).toFixed(1),
+      // 다중 패널 결과 추가
+      multiPanel: {
+        totalPanels: multiPanelData.totalPanels,
+        affectedPanels: multiPanelData.totalAffectedPanels,
+        affectedPercentage: multiPanelData.affectedPercentage.toFixed(1),
+        averageShadingPercentage: multiPanelData.averageShadingPercentage.toFixed(1),
+        totalPowerLoss: multiPanelData.totalPowerLoss.toFixed(1),
+        shadowOnRoof: multiPanelData.shadowOnRoof.toFixed(1),
+        shadingMap: multiPanelData.shadingMap
+      }
     });
   };
 
@@ -450,6 +551,77 @@ const SolarShadowCalculator = () => {
               </div>
             </div>
 
+            {/* 다중 패널 시스템 설정 */}
+            <div className={`${isDarkMode ? 'bg-blue-900' : 'bg-blue-50'} p-4 rounded-lg`}>
+              <h3 className="text-sm font-semibold mb-3 text-blue-600">🔷 다중 패널 시스템 설정</h3>
+              
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className={`block text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                    옥상 폭 (m)
+                  </label>
+                  <input
+                    type="number"
+                    value={inputs.roofWidth}
+                    onChange={(e) => handleInputChange('roofWidth', e.target.value)}
+                    className={`w-full px-2 py-1 border rounded text-xs ${inputClass}`}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                    옥상 깊이 (m)
+                  </label>
+                  <input
+                    type="number"
+                    value={inputs.roofDepth}
+                    onChange={(e) => handleInputChange('roofDepth', e.target.value)}
+                    className={`w-full px-2 py-1 border rounded text-xs ${inputClass}`}
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className={`block text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                    패널 행수
+                  </label>
+                  <input
+                    type="number"
+                    value={inputs.panelRows}
+                    onChange={(e) => handleInputChange('panelRows', e.target.value)}
+                    className={`w-full px-2 py-1 border rounded text-xs ${inputClass}`}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                    패널 열수
+                  </label>
+                  <input
+                    type="number"
+                    value={inputs.panelCols}
+                    onChange={(e) => handleInputChange('panelCols', e.target.value)}
+                    className={`w-full px-2 py-1 border rounded text-xs ${inputClass}`}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                    행간격 (m)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={inputs.rowSpacing}
+                    onChange={(e) => handleInputChange('rowSpacing', e.target.value)}
+                    className={`w-full px-2 py-1 border rounded text-xs ${inputClass}`}
+                  />
+                </div>
+              </div>
+              
+              <div className={`mt-2 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                총 패널 수: {inputs.panelRows * inputs.panelCols}장
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>월</label>
@@ -619,9 +791,94 @@ const SolarShadowCalculator = () => {
                  parseFloat(results.powerLoss) < 20 ? '경미한 손실' : '상당한 손실'}
               </div>
             </div>
+
+            {/* 다중 패널 시스템 결과 */}
+            {results.multiPanel && (
+              <div className={`${isDarkMode ? 'bg-gradient-to-r from-indigo-900 to-purple-900' : 'bg-gradient-to-r from-indigo-50 to-purple-50'} p-4 rounded-lg border-2 ${isDarkMode ? 'border-indigo-700' : 'border-indigo-200'}`}>
+                <h3 className="text-sm font-semibold mb-3 text-indigo-600">🏢 다중 패널 시스템 분석</h3>
+                
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-2 rounded`}>
+                    <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>총 패널 수</div>
+                    <div className="text-lg font-bold text-indigo-600">{results.multiPanel.totalPanels}장</div>
+                  </div>
+                  <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-2 rounded`}>
+                    <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>영향받는 패널</div>
+                    <div className="text-lg font-bold text-orange-600">{results.multiPanel.affectedPanels}장</div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-2 rounded`}>
+                    <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>전체 시스템 손실</div>
+                    <div className="text-lg font-bold text-red-600">{results.multiPanel.totalPowerLoss}%</div>
+                  </div>
+                  <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-2 rounded`}>
+                    <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>영향 패널 비율</div>
+                    <div className="text-lg font-bold text-yellow-600">{results.multiPanel.affectedPercentage}%</div>
+                  </div>
+                </div>
+                
+                <div className={`mt-3 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  옥상 그림자 깊이: {results.multiPanel.shadowOnRoof}m
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* 패널별 차폐 시각화 */}
+      {results.multiPanel && results.multiPanel.shadingMap && (
+        <div className={`mt-6 ${cardClass} rounded-lg shadow-lg p-6`}>
+          <h2 className="text-xl font-semibold mb-4">📊 패널별 차폐 현황 (히트맵)</h2>
+          <div className="mb-4">
+            <div className="flex items-center gap-4 text-sm mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-green-500 rounded"></div>
+                <span>정상 (0-5%)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+                <span>경미 (5-20%)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-orange-500 rounded"></div>
+                <span>보통 (20-50%)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-red-500 rounded"></div>
+                <span>심각 (50%+)</span>
+              </div>
+            </div>
+            
+            <div className="grid gap-1" style={{gridTemplateColumns: `repeat(${inputs.panelCols}, 1fr)`}}>
+              {results.multiPanel.shadingMap.map((row, rowIndex) => 
+                row.map((shadingPercentage, colIndex) => {
+                  let bgColor = 'bg-green-500';
+                  if (shadingPercentage >= 50) bgColor = 'bg-red-500';
+                  else if (shadingPercentage >= 20) bgColor = 'bg-orange-500';
+                  else if (shadingPercentage >= 5) bgColor = 'bg-yellow-500';
+                  
+                  return (
+                    <div
+                      key={`${rowIndex}-${colIndex}`}
+                      className={`${bgColor} w-6 h-6 rounded text-xs flex items-center justify-center text-white font-bold`}
+                      title={`Row ${rowIndex + 1}, Col ${colIndex + 1}: ${shadingPercentage.toFixed(1)}% 차폐`}
+                    >
+                      {shadingPercentage >= 5 ? shadingPercentage.toFixed(0) : ''}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            
+            <div className={`mt-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              * 각 사각형은 개별 패널을 나타내며, 숫자는 차폐율(%)입니다. (5% 미만은 숫자 생략)
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 시간별 분석 */}
       <div className={`mt-6 ${cardClass} rounded-lg shadow-lg p-6`}>
@@ -681,7 +938,7 @@ const SolarShadowCalculator = () => {
       {/* 개선 권장사항 */}
       <div className={`mt-6 ${isDarkMode ? 'bg-gradient-to-r from-green-900 to-blue-900' : 'bg-gradient-to-r from-green-50 to-blue-50'} rounded-lg p-6`}>
         <h3 className="text-lg font-semibold mb-3">💡 3D 분석 기반 개선 권장사항</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
           <div>
             <strong>🧭 방향 최적화:</strong>
             <ul className={`mt-1 space-y-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -706,11 +963,21 @@ const SolarShadowCalculator = () => {
               <li>• 최악 손실 시간대: {hourlyData.reduce((max, h) => parseFloat(h.powerLoss) > parseFloat(max.powerLoss) ? h : max, {powerLoss: 0}).hour || 'N/A'}시</li>
             </ul>
           </div>
+          {results.multiPanel && (
+            <div>
+              <strong>🏢 다중 패널 최적화:</strong>
+              <ul className={`mt-1 space-y-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <li>• 영향받는 패널: {results.multiPanel.affectedPanels}/{results.multiPanel.totalPanels}장</li>
+                <li>• {parseFloat(results.multiPanel.affectedPercentage) > 30 ? '전체 배치 재검토 필요' : parseFloat(results.multiPanel.affectedPercentage) > 10 ? '부분적 배치 조정 권장' : '현재 배치 적절'}</li>
+                <li>• 옥상 그림자 침투: {results.multiPanel.shadowOnRoof}m</li>
+              </ul>
+            </div>
+          )}
         </div>
         
         <div className={`mt-4 p-4 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg border ${isDarkMode ? 'border-gray-600' : 'border-blue-200'}`}>
           <h4 className={`font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-800'} mb-2`}>📊 종합 분석 결과</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
             <div>
               <span className="font-medium">연평균 손실:</span>
               <span className="ml-2 font-bold text-red-600">
@@ -733,7 +1000,40 @@ const SolarShadowCalculator = () => {
                  parseFloat(results.powerLoss) < 20 ? '보통' : '높음'}
               </span>
             </div>
+            {results.multiPanel && (
+              <div>
+                <span className="font-medium">시스템 효율:</span>
+                <span className={`ml-2 font-bold ${
+                  parseFloat(results.multiPanel.totalPowerLoss) < 5 ? 'text-green-600' : 
+                  parseFloat(results.multiPanel.totalPowerLoss) < 15 ? 'text-yellow-600' : 'text-red-600'
+                }`}>
+                  {(100 - parseFloat(results.multiPanel.totalPowerLoss)).toFixed(1)}%
+                </span>
+              </div>
+            )}
           </div>
+          
+          {results.multiPanel && (
+            <div className={`mt-3 pt-3 border-t ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+              <h5 className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2`}>💰 경제성 분석 (추정)</h5>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div>
+                  <span>정상 발전 패널: </span>
+                  <span className="font-bold text-green-600">{results.multiPanel.totalPanels - results.multiPanel.affectedPanels}장</span>
+                </div>
+                <div>
+                  <span>연간 손실 전력량: </span>
+                  <span className="font-bold text-red-600">~{(parseFloat(results.multiPanel.totalPowerLoss) * 0.3).toFixed(1)}MWh</span>
+                  <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}> (추정)</span>
+                </div>
+                <div>
+                  <span>개선 후 예상 효과: </span>
+                  <span className="font-bold text-blue-600">+{(parseFloat(results.multiPanel.totalPowerLoss) * 0.7).toFixed(1)}%</span>
+                  <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}> (최대)</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
