@@ -81,8 +81,6 @@ const SolarShadowCalculator = () => {
   const [customBuildings, setCustomBuildings] = useState([
     { id: 1, x: 0, z: -20, orientation: 180, name: '건물 1' }
   ]);
-  const [selectedBuilding, setSelectedBuilding] = useState(null);
-  const [isEditingBuildings, setIsEditingBuildings] = useState(false);
 
   // 도시 선택 시 위도 업데이트
   const handleCityChange = (city) => {
@@ -191,9 +189,6 @@ const SolarShadowCalculator = () => {
 
   const removeCustomBuilding = (id) => {
     setCustomBuildings(prev => prev.filter(building => building.id !== id));
-    if (selectedBuilding?.id === id) {
-      setSelectedBuilding(null);
-    }
   };
 
   // 태양 고도각 계산
