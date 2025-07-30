@@ -8,7 +8,8 @@ const ShadowViewer3D = ({
   solarBuildingHeight = 10,
   solarBuildingWidth = 50,
   solarBuildingDepth = 30,
-  buildingDistance = 30, 
+  buildingDistance = 30,
+  buildingLayout = [], // 건물 배치 정보 배열
   panelTilt = 30, 
   panelAzimuth = 180,
   currentTime = 12,
@@ -52,12 +53,12 @@ const ShadowViewer3D = ({
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     rendererRef.current = renderer;
 
-    // 조명 설정
+    // 조명 설정 (태양을 더 높이)
     const sunLight = new THREE.DirectionalLight(0xffffff, 1);
     const sunAngle = (currentTime - 12) * 15 * Math.PI / 180; // 태양 각도
     sunLight.position.set(
-      Math.sin(sunAngle) * 100,
-      Math.cos(sunAngle) * 50 + 30,
+      Math.sin(sunAngle) * 150,
+      Math.cos(sunAngle) * 80 + 60, // 기본 높이를 더 높게 (30→60)
       0
     );
     sunLight.castShadow = true;
@@ -84,17 +85,41 @@ const ShadowViewer3D = ({
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // 그림자를 만드는 높은 건물 생성 (실제 크기)
-    const buildingGeometry = new THREE.BoxGeometry(
-      buildingWidth || 20, 
-      buildingHeight, 
-      buildingDepth || 30
-    );
-    const buildingMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
-    const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
-    building.position.set(-buildingDistance, buildingHeight / 2, 0);
-    building.castShadow = true;
-    scene.add(building);
+    // 그림자를 만드는 높은 건물들 생성 (다중 건물 지원)
+    if (buildingLayout.length > 0) {
+      buildingLayout.forEach((buildingInfo, index) => {
+        const buildingGeometry = new THREE.BoxGeometry(
+          buildingWidth || 20, 
+          buildingHeight, 
+          buildingDepth || 30
+        );
+        const buildingMaterial = new THREE.MeshLambertMaterial({ 
+          color: index === 0 ? 0x8B4513 : 0x654321 // 첫 번째 건물은 갈색, 나머지는 어두운 갈색
+        });
+        const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
+        
+        // 건물 위치 설정
+        const distance = buildingDistance;
+        const x = buildingInfo.x || distance * Math.sin(buildingInfo.orientation * Math.PI / 180);
+        const z = buildingInfo.z || -distance * Math.cos(buildingInfo.orientation * Math.PI / 180);
+        
+        building.position.set(x, buildingHeight / 2, z);
+        building.castShadow = true;
+        scene.add(building);
+      });
+    } else {
+      // 기본 단일 건물 (이전 버전 호환성)
+      const buildingGeometry = new THREE.BoxGeometry(
+        buildingWidth || 20, 
+        buildingHeight, 
+        buildingDepth || 30
+      );
+      const buildingMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+      const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
+      building.position.set(-buildingDistance, buildingHeight / 2, 0);
+      building.castShadow = true;
+      scene.add(building);
+    }
 
     // 태양광 패널이 설치된 건물 생성 (실제 크기)
     const solarBuildingGeometry = new THREE.BoxGeometry(
@@ -263,7 +288,7 @@ const ShadowViewer3D = ({
       }
       renderer.dispose();
     };
-  }, [buildingHeight, buildingWidth, buildingDepth, solarBuildingHeight, solarBuildingWidth, solarBuildingDepth, buildingDistance, panelTilt, panelAzimuth, currentTime, viewMode]);
+  }, [buildingHeight, buildingWidth, buildingDepth, solarBuildingHeight, solarBuildingWidth, solarBuildingDepth, buildingDistance, buildingLayout, panelTilt, panelAzimuth, currentTime, viewMode]);
 
   const handleViewModeChange = (mode) => {
     setViewMode(mode);
@@ -285,8 +310,8 @@ const ShadowViewer3D = ({
           if (sunLightRef.current && sunRef.current) {
             const sunAngle = (currentTime - 12) * 15 * Math.PI / 180;
             const newPosition = new THREE.Vector3(
-              Math.sin(sunAngle) * 100,
-              Math.cos(sunAngle) * 50 + 30,
+              Math.sin(sunAngle) * 150, // 거리 증가 (100→150)
+              Math.cos(sunAngle) * 80 + 60, // 높이 증가 (50+30→80+60)
               0
             );
             

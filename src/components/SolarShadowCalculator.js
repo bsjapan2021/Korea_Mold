@@ -50,6 +50,10 @@ const SolarShadowCalculator = () => {
     solarBuildingWidth: 50, // 태양광 설치 건물 폭 (m)
     solarBuildingDepth: 30, // 태양광 설치 건물 깊이 (m)
     
+    // 건물 배치 정보
+    buildingLayoutPattern: 'single', // 배치 패턴: single, parallel, L-shape, surrounding
+    buildingOrientation: 180, // 높은 건물이 태양광 건물에서 보는 방향 (도, 0=북, 90=동, 180=남, 270=서)
+    
     distance: 20, // 건물 간 거리 (m)
     panelWidth: 10, // 태양광 패널 폭 (m)
     panelDepth: 8, // 태양광 패널 높이 (m)
@@ -63,7 +67,6 @@ const SolarShadowCalculator = () => {
     selectedCity: '서울', // 선택된 도시
     month: 6, // 월
     hour: 12, // 시간
-    buildingOrientation: 180, // 높은 건물이 태양광 건물에서 보는 방향 (도, 0=북, 90=동, 180=남, 270=서)
     panelOrientation: 180, // 태양광 패널 방향 (도, 180=남향)
     panelTilt: 30, // 태양광 패널 기울기 (도)
     terrainSlope: 0 // 지형 경사도 (도)
@@ -84,6 +87,60 @@ const SolarShadowCalculator = () => {
         latitude: selectedCityData.latitude 
       }));
     }
+  };
+
+  // 건물 배치 패턴 정의
+  const buildingLayoutPatterns = {
+    single: {
+      name: '단일 건물',
+      description: '태양광 건물 남쪽에 1개 건물',
+      buildings: [
+        { x: 0, z: 0, orientation: 180 } // 남쪽에 1개
+      ]
+    },
+    parallel: {
+      name: '평행 배치',
+      description: '태양광 건물 남쪽에 평행하게 2개 건물',
+      buildings: [
+        { x: -30, z: 0, orientation: 180 }, // 남서쪽
+        { x: 30, z: 0, orientation: 180 }   // 남동쪽
+      ]
+    },
+    'L-shape': {
+      name: 'L자 배치',
+      description: '남쪽과 동쪽에 L자 형태로 배치',
+      buildings: [
+        { x: 0, z: 0, orientation: 180 },   // 남쪽
+        { x: 60, z: -30, orientation: 270 } // 동쪽
+      ]
+    },
+    surrounding: {
+      name: '둘러싸기',
+      description: '태양광 건물을 3방향에서 둘러싸기',
+      buildings: [
+        { x: 0, z: 0, orientation: 180 },   // 남쪽
+        { x: -60, z: -30, orientation: 90 }, // 서쪽
+        { x: 60, z: -30, orientation: 270 }  // 동쪽
+      ]
+    },
+    custom: {
+      name: '사용자 정의',
+      description: '직접 배치 설정',
+      buildings: []
+    }
+  };
+
+  // 현재 선택된 배치 패턴의 건물 정보 가져오기
+  const getCurrentBuildingLayout = () => {
+    const pattern = buildingLayoutPatterns[inputs.buildingLayoutPattern];
+    if (!pattern) return [];
+    
+    return pattern.buildings.map(building => ({
+      ...building,
+      // 거리 조정
+      x: building.x || inputs.distance * Math.sin(building.orientation * Math.PI / 180),
+      z: building.z || -inputs.distance * Math.cos(building.orientation * Math.PI / 180)
+    }));
   };
 
   // 태양 고도각 계산
@@ -735,6 +792,57 @@ const SolarShadowCalculator = () => {
               </div>
             </div>
 
+            {/* 건물 배치 패턴 섹션 */}
+            <div className="bg-purple-900/20 p-3 rounded-lg border border-purple-700/30">
+              <h4 className="text-sm font-semibold text-purple-300 mb-3 flex items-center">
+                <Compass className="w-4 h-4 mr-2" />
+                건물 배치 패턴
+              </h4>
+              <div className="space-y-3">
+                <div>
+                  <label className={`block text-sm font-medium text-gray-300 mb-2`}>
+                    배치 유형 선택
+                  </label>
+                  <select
+                    value={inputs.buildingLayoutPattern}
+                    onChange={(e) => handleInputChange('buildingLayoutPattern', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm ${inputClass}`}
+                  >
+                    {Object.entries(buildingLayoutPatterns).map(([key, pattern]) => (
+                      <option key={key} value={key}>
+                        {pattern.name} - {pattern.description}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                {inputs.buildingLayoutPattern !== 'custom' && (
+                  <div className="bg-purple-800/30 p-2 rounded text-xs text-purple-200">
+                    <p><strong>현재 배치:</strong> {buildingLayoutPatterns[inputs.buildingLayoutPattern]?.description}</p>
+                    <p><strong>건물 수:</strong> {buildingLayoutPatterns[inputs.buildingLayoutPattern]?.buildings.length}개</p>
+                  </div>
+                )}
+
+                {inputs.buildingLayoutPattern === 'single' && (
+                  <div>
+                    <label className={`block text-sm font-medium text-gray-300 mb-1`}>
+                      건물 방향
+                    </label>
+                    <select
+                      value={inputs.buildingOrientation}
+                      onChange={(e) => handleInputChange('buildingOrientation', e.target.value)}
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 text-sm ${inputClass}`}
+                    >
+                      <option value={0}>북쪽 (0°)</option>
+                      <option value={90}>동쪽 (90°)</option>
+                      <option value={180}>남쪽 (180°)</option>
+                      <option value={270}>서쪽 (270°)</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={`block text-sm font-medium text-gray-300 mb-1`}>
@@ -1127,6 +1235,7 @@ const SolarShadowCalculator = () => {
                 solarBuildingWidth={inputs.solarBuildingWidth}
                 solarBuildingDepth={inputs.solarBuildingDepth}
                 buildingDistance={inputs.distance}
+                buildingLayout={getCurrentBuildingLayout()}
                 panelTilt={inputs.panelTilt}
                 panelAzimuth={inputs.panelOrientation}
                 currentTime={inputs.hour}
