@@ -663,7 +663,13 @@ const SolarShadowCalculator = () => {
   }, [inputs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleInputChange = (field, value) => {
-    setInputs(prev => ({ ...prev, [field]: parseFloat(value) || 0 }));
+    // 문자열 필드들은 그대로 설정, 숫자 필드들만 parseFloat 적용
+    const stringFields = ['buildingLayoutPattern', 'selectedCity'];
+    if (stringFields.includes(field)) {
+      setInputs(prev => ({ ...prev, [field]: value }));
+    } else {
+      setInputs(prev => ({ ...prev, [field]: parseFloat(value) || 0 }));
+    }
   };
 
   const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
