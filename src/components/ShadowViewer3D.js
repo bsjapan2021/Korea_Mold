@@ -17,7 +17,11 @@ const ShadowViewer3D = ({
   panelWidth = 2,    // 패널 폭
   panelDepth = 1,    // 패널 깊이
   currentTime = 12,
-  shadowLoss = 0
+  shadowLoss = 0,
+  latitude = 37.5,   // 위도 정보
+  month = 12,        // 월 정보
+  calculateSolarElevation = null, // 태양 고도각 계산 함수
+  calculateSolarAzimuth = null    // 태양 방위각 계산 함수
 }) => {
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
@@ -33,6 +37,49 @@ const ShadowViewer3D = ({
   const [isLooping, setIsLooping] = useState(false); // 반복 애니메이션 옵션
   const [animationSpeed, setAnimationSpeed] = useState(1); // 애니메이션 속도 (1 = 기본)
   const [realisticMode, setRealisticMode] = useState(true); // 실사 모드 토글
+
+  // 실제 태양 위치 계산 함수 (SolarShadowCalculator와 동일한 로직)
+  const calculateActualSunPosition = useCallback((time) => {
+    if (!calculateSolarElevation || !calculateSolarAzimuth) {
+      // 계산 함수가 없을 경우 기본 간단한 계산 사용
+      const sunAngle = (time - 12) * 15 * Math.PI / 180;
+      const solarBuildingX = 25;
+      return {
+        x: solarBuildingX + Math.sin(sunAngle) * 150,
+        y: Math.cos(sunAngle) * 80 + 60,
+        z: 0,
+        elevation: Math.cos(sunAngle) * 60 + 30, // 간단한 고도각 계산
+        azimuth: ((time - 6) / 12) * 180 + 90   // 간단한 방위각 계산
+      };
+    }
+
+    // 실제 태양 계산 함수 사용
+    const elevation = calculateSolarElevation(latitude, month, time);
+    const azimuth = calculateSolarAzimuth(latitude, month, time);
+    
+    // 고도각과 방위각을 3D 좌표로 변환
+    const elevationRad = elevation * Math.PI / 180;
+    const azimuthRad = azimuth * Math.PI / 180;
+    
+    // 태양광 건물을 기준으로 한 위치 계산
+    const solarBuildingX = 25;
+    const solarBuildingZ = 0;
+    const distance = 150; // 태양까지의 기본 거리
+    
+    // 방위각: 남쪽(0°)을 기준으로 동쪽이 음수, 서쪽이 양수
+    // Three.js 좌표계에서 X축(동서), Z축(남북) 변환
+    const sunX = solarBuildingX + Math.sin(azimuthRad) * distance * Math.cos(elevationRad);
+    const sunY = Math.sin(elevationRad) * distance + 20; // 최소 높이 보장
+    const sunZ = solarBuildingZ - Math.cos(azimuthRad) * distance * Math.cos(elevationRad);
+    
+    return {
+      x: sunX,
+      y: Math.max(sunY, 20), // 지평선 아래로 내려가지 않도록
+      z: sunZ,
+      elevation: elevation,
+      azimuth: azimuth
+    };
+  }, [calculateSolarElevation, calculateSolarAzimuth, latitude, month]);
 
   // 텍스처 생성 함수들
   const createGrassTexture = () => {
@@ -316,16 +363,11 @@ const ShadowViewer3D = ({
 
     // 향상된 조명 설정
     const sunLight = new THREE.DirectionalLight(0xffffff, realisticMode ? 3 : 1);
-    const sunAngle = (currentTime - 12) * 15 * Math.PI / 180;
     
-    // 태양광 패널 건물(25, 0, 0)을 기준으로 태양 위치 계산
-    // 동쪽(6시)에서 서쪽(18시)로 이동
-    const solarBuildingX = 25; // 태양광 패널 건물의 X 좌표
-    const sunX = solarBuildingX + Math.sin(sunAngle) * 150; // 건물 기준으로 동서 이동
-    const sunY = Math.cos(sunAngle) * 80 + 60; // 높이는 시간에 따라 포물선
-    const sunZ = 0; // Z축은 고정 (남북 방향은 변경 없음)
+    // 실제 태양 위치 계산 사용
+    const sunPosition = calculateActualSunPosition(currentTime);
     
-    sunLight.position.set(sunX, sunY, sunZ);
+    sunLight.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = realisticMode ? 4096 : 2048;
     sunLight.shadow.mapSize.height = realisticMode ? 4096 : 2048;
@@ -845,7 +887,7 @@ const ShadowViewer3D = ({
       }
       renderer.dispose();
     };
-  }, [buildingHeight, buildingWidth, buildingDepth, solarBuildingHeight, solarBuildingWidth, solarBuildingDepth, buildingDistance, buildingLayout, panelTilt, panelAzimuth, panelRows, panelCols, panelWidth, panelDepth, currentTime, viewMode, realisticMode, addEnvironmentElements]);
+  }, [buildingHeight, buildingWidth, buildingDepth, solarBuildingHeight, solarBuildingWidth, solarBuildingDepth, buildingDistance, buildingLayout, panelTilt, panelAzimuth, panelRows, panelCols, panelWidth, panelDepth, currentTime, viewMode, realisticMode, addEnvironmentElements, calculateActualSunPosition]);
 
   const handleViewModeChange = useCallback((mode) => {
     setViewMode(mode);
@@ -875,16 +917,10 @@ const ShadowViewer3D = ({
           }
         }
         
-        // 태양 위치 업데이트
-        const sunAngle = (nextTime - 12) * 15 * Math.PI / 180;
+        // 태양 위치 업데이트 - 실제 태양 계산 사용
+        const sunPosition = calculateActualSunPosition(nextTime);
         
-        // 태양광 패널 건물(25, 0, 0)을 기준으로 태양 위치 계산
-        const solarBuildingX = 25;
-        const sunX = solarBuildingX + Math.sin(sunAngle) * 150;
-        const sunY = Math.cos(sunAngle) * 80 + 60;
-        const sunZ = 0;
-        
-        const newSunPosition = new THREE.Vector3(sunX, sunY, sunZ);
+        const newSunPosition = new THREE.Vector3(sunPosition.x, sunPosition.y, sunPosition.z);
         
         sunLightRef.current.position.copy(newSunPosition);
         
@@ -905,7 +941,7 @@ const ShadowViewer3D = ({
         clearTimeout(timeoutId);
       }
     };
-  }, [isAnimating, isLooping, animationSpeed]);
+  }, [isAnimating, isLooping, animationSpeed, calculateActualSunPosition]);
 
   const stopAnimation = useCallback(() => {
     setIsAnimating(false);
@@ -1018,6 +1054,22 @@ const ShadowViewer3D = ({
           </div>
         </div>
       )}
+
+      {/* 태양 정보 표시 */}
+      <div className="absolute top-4 left-4 bg-black/70 text-white text-xs p-3 rounded">
+        <p className="font-semibold mb-2">☀️ 태양 정보</p>
+        {(() => {
+          const currentSunInfo = calculateActualSunPosition(isAnimating ? animationTime : currentTime);
+          return (
+            <div>
+              <p>고도각: {currentSunInfo.elevation.toFixed(1)}°</p>
+              <p>방위각: {currentSunInfo.azimuth.toFixed(1)}°</p>
+              <p>시간: {(isAnimating ? animationTime : currentTime).toFixed(1)}시</p>
+              <p>월: {month}월, 위도: {latitude.toFixed(1)}°</p>
+            </div>
+          );
+        })()}
+      </div>
 
       {/* 3D 뷰어 */}
       <div className="relative">

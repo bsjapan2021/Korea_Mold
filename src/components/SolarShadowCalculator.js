@@ -1383,6 +1383,10 @@ const SolarShadowCalculator = () => {
                 panelDepth={inputs.panelDepth}
                 currentTime={inputs.hour}
                 shadowLoss={results.averageLoss || 0}
+                latitude={inputs.latitude}
+                month={inputs.month}
+                calculateSolarElevation={calculateSolarElevation}
+                calculateSolarAzimuth={calculateSolarAzimuth}
               />
             </div>
           )}
