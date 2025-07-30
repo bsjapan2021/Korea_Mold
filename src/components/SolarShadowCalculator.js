@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sun, Building, Info, Compass } from 'lucide-react';
 import WeatherWidget from './WeatherWidget';
+import ShadowViewer3D from './ShadowViewer3D';
 
 const SolarShadowCalculator = () => {
   // 대한민국 주요 도시 위도 데이터
@@ -63,6 +64,7 @@ const SolarShadowCalculator = () => {
   const [results, setResults] = useState({});
   const [yearlyData, setYearlyData] = useState([]);
   const [hourlyData, setHourlyData] = useState([]);
+  const [heatmapViewMode, setHeatmapViewMode] = useState('2d'); // '2d' 또는 '3d'
 
   // 도시 선택 시 위도 업데이트
   const handleCityChange = (city) => {
@@ -968,53 +970,95 @@ const SolarShadowCalculator = () => {
       {/* 패널별 차폐 시각화 */}
       {results.multiPanel && results.multiPanel.shadingMap && (
         <div className={`mt-6 ${cardClass} rounded-lg shadow-lg p-6`}>
-          <h2 className="text-xl font-semibold mb-4">📊 패널별 차폐 현황 (히트맵)</h2>
-          <div className="mb-4">
-            <div className="flex items-center gap-4 text-sm mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-green-500 rounded"></div>
-                <span>정상 (0-5%)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-                <span>경미 (5-20%)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-orange-500 rounded"></div>
-                <span>보통 (20-50%)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-red-500 rounded"></div>
-                <span>심각 (50%+)</span>
-              </div>
-            </div>
-            
-            <div className="grid gap-1" style={{gridTemplateColumns: `repeat(${inputs.panelCols}, 1fr)`}}>
-              {(results.multiPanel?.shadingMap || []).map((row, rowIndex) => 
-                row.map((shadingPercentage, colIndex) => {
-                  const safeShadingPercentage = shadingPercentage || 0;
-                  let bgColor = 'bg-green-500';
-                  if (safeShadingPercentage >= 50) bgColor = 'bg-red-500';
-                  else if (safeShadingPercentage >= 20) bgColor = 'bg-orange-500';
-                  else if (safeShadingPercentage >= 5) bgColor = 'bg-yellow-500';
-                  
-                  return (
-                    <div
-                      key={`${rowIndex}-${colIndex}`}
-                      className={`${bgColor} w-6 h-6 rounded text-xs flex items-center justify-center text-white font-bold`}
-                      title={`Row ${rowIndex + 1}, Col ${colIndex + 1}: ${safeShadingPercentage.toFixed(1)}% 차폐`}
-                    >
-                      {safeShadingPercentage >= 5 ? safeShadingPercentage.toFixed(0) : ''}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-            
-            <div className={`mt-2 text-xs text-gray-400`}>
-              * 각 사각형은 개별 패널을 나타내며, 숫자는 차폐율(%)입니다. (5% 미만은 숫자 생략)
-            </div>
+          <h2 className="text-xl font-semibold mb-4">📊 패널별 차폐 현황</h2>
+          
+          {/* 탭 헤더 */}
+          <div className="flex mb-6 bg-gray-800 rounded-lg p-1">
+            <button
+              onClick={() => setHeatmapViewMode('2d')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                heatmapViewMode === '2d'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-300 hover:text-white hover:bg-gray-700'
+              }`}
+            >
+              📋 2D 히트맵
+            </button>
+            <button
+              onClick={() => setHeatmapViewMode('3d')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                heatmapViewMode === '3d'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-300 hover:text-white hover:bg-gray-700'
+              }`}
+            >
+              🏢 3D 뷰어
+            </button>
           </div>
+
+          {/* 2D 히트맵 뷰 */}
+          {heatmapViewMode === '2d' && (
+            <div>
+              <div className="flex items-center gap-4 text-sm mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-green-500 rounded"></div>
+                  <span>정상 (0-5%)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+                  <span>경미 (5-20%)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-orange-500 rounded"></div>
+                  <span>보통 (20-50%)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-red-500 rounded"></div>
+                  <span>심각 (50%+)</span>
+                </div>
+              </div>
+              
+              <div className="grid gap-1" style={{gridTemplateColumns: `repeat(${inputs.panelCols}, 1fr)`}}>
+                {(results.multiPanel?.shadingMap || []).map((row, rowIndex) => 
+                  row.map((shadingPercentage, colIndex) => {
+                    const safeShadingPercentage = shadingPercentage || 0;
+                    let bgColor = 'bg-green-500';
+                    if (safeShadingPercentage >= 50) bgColor = 'bg-red-500';
+                    else if (safeShadingPercentage >= 20) bgColor = 'bg-orange-500';
+                    else if (safeShadingPercentage >= 5) bgColor = 'bg-yellow-500';
+                    
+                    return (
+                      <div
+                        key={`${rowIndex}-${colIndex}`}
+                        className={`${bgColor} w-6 h-6 rounded text-xs flex items-center justify-center text-white font-bold`}
+                        title={`Row ${rowIndex + 1}, Col ${colIndex + 1}: ${safeShadingPercentage.toFixed(1)}% 차폐`}
+                      >
+                        {safeShadingPercentage >= 5 ? safeShadingPercentage.toFixed(0) : ''}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              
+              <div className={`mt-2 text-xs text-gray-400`}>
+                * 각 사각형은 개별 패널을 나타내며, 숫자는 차폐율(%)입니다. (5% 미만은 숫자 생략)
+              </div>
+            </div>
+          )}
+
+          {/* 3D 뷰어 */}
+          {heatmapViewMode === '3d' && (
+            <div>
+              <ShadowViewer3D
+                buildingHeight={inputs.buildingHeight}
+                buildingDistance={inputs.distance}
+                panelTilt={inputs.panelTilt}
+                panelAzimuth={inputs.panelOrientation}
+                currentTime={inputs.hour}
+                shadowLoss={results.averageLoss || 0}
+              />
+            </div>
+          )}
         </div>
       )}
 

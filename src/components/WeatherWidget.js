@@ -142,10 +142,10 @@ const WeatherWidget = () => {
 
   if (loading) {
     return (
-      <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-800 dark:to-gray-900 rounded-lg shadow-lg p-6">
-        <div className="flex items-center justify-center h-48">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-          <span className="ml-3 text-gray-600 dark:text-gray-300">날씨 정보를 불러오는 중...</span>
+      <div className="relative overflow-hidden rounded-xl shadow-2xl max-w-4xl mx-auto bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <div className="flex items-center justify-center h-48 p-6">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white/70"></div>
+          <span className="ml-3 text-white/80">날씨 정보를 불러오는 중...</span>
         </div>
       </div>
     );
@@ -153,17 +153,17 @@ const WeatherWidget = () => {
 
   if (error) {
     return (
-      <div className="bg-red-50 dark:bg-red-900/20 rounded-lg shadow-lg p-6">
-        <div className="text-red-600 dark:text-red-400 text-center">
+      <div className="relative overflow-hidden rounded-xl shadow-2xl max-w-4xl mx-auto bg-gradient-to-br from-red-900/90 via-red-800/90 to-red-900/90">
+        <div className="text-white text-center p-6">
           <p className="text-lg font-medium">⚠️ {error}</p>
-          <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+          <div className="mt-3 text-sm text-white/70">
             <p>• API 키가 유효한지 확인해주세요</p>
             <p>• 인터넷 연결을 확인해주세요</p>
             <p>• OpenWeather 서비스 상태를 확인해주세요</p>
           </div>
           <button 
             onClick={() => fetchWeatherData(cities.find(city => city.name === selectedCity))}
-            className="mt-4 px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
+            className="mt-4 px-6 py-2 bg-white/20 backdrop-blur-md border border-white/30 text-white rounded-lg hover:bg-white/30 transition-colors font-medium"
           >
             🔄 다시 시도
           </button>
@@ -173,37 +173,37 @@ const WeatherWidget = () => {
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl shadow-2xl">
+    <div className="relative overflow-hidden rounded-xl shadow-2xl max-w-4xl mx-auto">
       {/* 배경 이미지 */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: `linear-gradient(135deg, rgba(255,107,107,0.8) 0%, rgba(255,173,86,0.7) 50%, rgba(255,204,112,0.6) 100%), url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:%23ff6b6b;stop-opacity:0.8"/><stop offset="50%" style="stop-color:%23ffa726;stop-opacity:0.7"/><stop offset="100%" style="stop-color:%23ffcc70;stop-opacity:0.6"/></linearGradient></defs><rect width="100%" height="100%" fill="url(%23bg)"/><path d="M0,300 Q480,200 960,300 T1920,300 L1920,1080 L0,1080 Z" fill="rgba(0,0,0,0.3)"/><path d="M0,500 Q480,400 960,500 T1920,500 L1920,1080 L0,1080 Z" fill="rgba(0,0,0,0.2)"/><path d="M0,700 Q480,600 960,700 T1920,700 L1920,1080 L0,1080 Z" fill="rgba(0,0,0,0.1)"/></svg>')`
+          backgroundImage: `linear-gradient(135deg, rgba(30,30,60,0.9) 0%, rgba(60,20,80,0.8) 50%, rgba(100,20,50,0.85) 100%), url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:%23FF6B35;stop-opacity:0.8"/><stop offset="50%" style="stop-color:%23F7931E;stop-opacity:0.7"/><stop offset="100%" style="stop-color:%23FFD23F;stop-opacity:0.6"/></linearGradient></defs><rect width="100%" height="100%" fill="url(%23bg)"/><ellipse cx="1600" cy="300" rx="200" ry="150" fill="%23FFE066" opacity="0.8"/><path d="M0,600 Q480,500 960,600 T1920,600 L1920,1080 L0,1080 Z" fill="rgba(0,0,0,0.4)"/><path d="M0,800 Q480,700 960,800 T1920,800 L1920,1080 L0,1080 Z" fill="rgba(0,0,0,0.3)"/></svg>')`
         }}
       />
       
       {/* 글래스모피즘 오버레이 */}
-      <div className="absolute inset-0 bg-white/10 backdrop-blur-md border border-white/20" />
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm border border-white/10" />
       
       {/* 메인 컨텐츠 */}
-      <div className="relative z-10 p-8 text-white">
+      <div className="relative z-10 p-6 text-white">
         {/* 헤더 */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className="text-4xl font-light">🌤️</div>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <div className="text-2xl">🌤️</div>
             <div>
-              <h2 className="text-2xl font-light tracking-wide">WEATHER</h2>
-              <p className="text-white/70 text-sm font-light">실시간 날씨정보</p>
+              <h2 className="text-lg font-medium tracking-wide">실시간 날씨</h2>
+              <p className="text-white/70 text-xs">태양광 발전 정보</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <select
               value={selectedCity}
               onChange={(e) => setSelectedCity(e.target.value)}
-              className="px-4 py-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-xl text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50 font-light"
+              className="px-3 py-1.5 bg-black/40 backdrop-blur-md border border-white/20 rounded-lg text-white text-sm placeholder-white/70 focus:outline-none focus:ring-1 focus:ring-white/50"
             >
               {cities.map(city => (
-                <option key={city.name} value={city.name} className="bg-gray-800 text-white">{city.name}</option>
+                <option key={city.name} value={city.name} className="bg-gray-900 text-white">{city.name}</option>
               ))}
             </select>
             <button
@@ -214,10 +214,10 @@ const WeatherWidget = () => {
                   fetchWeatherData(cityData);
                 }
               }}
-              className="p-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-xl hover:bg-white/30 transition-all duration-300 font-light"
+              className="p-1.5 bg-black/40 backdrop-blur-md border border-white/20 rounded-lg hover:bg-black/60 transition-all duration-300"
               disabled={loading}
             >
-              <div className={`text-white ${loading ? 'animate-spin' : ''}`}>
+              <div className={`text-white text-sm ${loading ? 'animate-spin' : ''}`}>
                 {loading ? '🔄' : '↻'}
               </div>
             </button>
@@ -226,63 +226,63 @@ const WeatherWidget = () => {
 
         {/* 현재 날씨 메인 섹션 */}
         {currentWeather && (
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-6">
-                <div className="text-8xl drop-shadow-lg">
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <div className="text-5xl drop-shadow-lg">
                   {getWeatherIcon(currentWeather.weather[0].icon)}
                 </div>
                 <div>
-                  <div className="text-6xl font-thin mb-2">
-                    +{Math.round(currentWeather.main.temp)}°C
+                  <div className="text-4xl font-thin mb-1">
+                    {Math.round(currentWeather.main.temp)}°C
                   </div>
-                  <div className="text-white/80 text-lg font-light">
-                    Feels like {Math.round(currentWeather.main.feels_like)}°
+                  <div className="text-white/80 text-sm">
+                    체감 {Math.round(currentWeather.main.feels_like)}°
                   </div>
-                  <div className="text-white/70 text-base font-light capitalize mt-1">
+                  <div className="text-white/70 text-sm capitalize">
                     {currentWeather.weather[0].description}
                   </div>
                 </div>
               </div>
               
               {/* 상세 정보 */}
-              <div className="text-right space-y-2">
-                <div className="text-white/80 text-sm font-light">
-                  <div>Sunrise: {formatTime(currentWeather.sys.sunrise)}</div>
-                  <div>Sunset: {formatTime(currentWeather.sys.sunset)}</div>
+              <div className="text-right space-y-1">
+                <div className="text-white/80 text-xs">
+                  <div>일출: {formatTime(currentWeather.sys.sunrise)}</div>
+                  <div>일몰: {formatTime(currentWeather.sys.sunset)}</div>
                 </div>
-                <div className="text-white/70 text-xs font-light">
-                  <div>Wind speed: {currentWeather.wind.speed} m/s</div>
-                  <div>Air humidity: {currentWeather.main.humidity}%</div>
-                  <div>Pressure: {currentWeather.main.pressure} hPa</div>
-                  <div>Precipitation probability: {Math.round((100 - (currentWeather.clouds?.all || 0)) * 0.1)}%</div>
+                <div className="text-white/60 text-xs space-y-0.5">
+                  <div>풍속: {currentWeather.wind.speed}m/s</div>
+                  <div>습도: {currentWeather.main.humidity}%</div>
+                  <div>기압: {currentWeather.main.pressure}hPa</div>
+                  <div>강수: {Math.round((100 - (currentWeather.clouds?.all || 0)) * 0.1)}%</div>
                 </div>
               </div>
             </div>
 
             {/* 태양광 발전 최적화 정보 */}
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 mb-8">
-              <h4 className="text-lg font-light mb-4 flex items-center gap-2">
+            <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-lg p-4 mb-4">
+              <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
                 ⚡ 태양광 발전 최적화 정보
               </h4>
-              <div className="grid grid-cols-3 gap-6">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="text-center">
-                  <div className="text-white/70 text-sm font-light mb-1">발전량 예상</div>
-                  <div className="text-2xl font-light">
+                  <div className="text-white/70 text-xs mb-1">발전량 예상</div>
+                  <div className="text-lg font-medium">
                     {currentWeather.clouds?.all <= 20 ? '최적' : 
                      currentWeather.clouds?.all <= 50 ? '양호' : 
                      currentWeather.clouds?.all <= 80 ? '보통' : '불량'}
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-white/70 text-sm font-light mb-1">일조시간</div>
-                  <div className="text-2xl font-light">
+                  <div className="text-white/70 text-xs mb-1">일조시간</div>
+                  <div className="text-lg font-medium">
                     {Math.round((currentWeather.sys.sunset - currentWeather.sys.sunrise) / 3600)}시간
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-white/70 text-sm font-light mb-1">효율성</div>
-                  <div className="text-2xl font-light">
+                  <div className="text-white/70 text-xs mb-1">효율성</div>
+                  <div className="text-lg font-medium">
                     {100 - (currentWeather.clouds?.all || 0)}%
                   </div>
                 </div>
@@ -292,25 +292,25 @@ const WeatherWidget = () => {
         )}
 
         {/* 시간별 예보 */}
-        <div className="mb-8">
-          <h3 className="text-lg font-light mb-4 text-white/90">MORE DETAILS:</h3>
-          <div className="grid grid-cols-8 gap-3">
+        <div className="mb-4">
+          <h3 className="text-sm font-medium mb-3 text-white/90">시간별 날씨:</h3>
+          <div className="grid grid-cols-8 gap-2">
             {forecast24h.slice(0, 8).map((item, index) => {
               const hour = new Date(item.dt * 1000).getHours();
-              const timeLabel = hour === 0 ? 'NIGHT' : 
-                               hour < 6 ? 'NIGHT' : 
-                               hour < 12 ? 'MORNING' : 
-                               hour < 18 ? 'DAY' : 'EVENING';
+              const timeLabel = hour === 0 ? '밤' : 
+                               hour < 6 ? '새벽' : 
+                               hour < 12 ? '오전' : 
+                               hour < 18 ? '오후' : '저녁';
               
               return (
-                <div key={index} className="text-center bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
-                  <div className="text-xs text-white/70 font-light mb-2">{timeLabel}</div>
-                  <div className="text-2xl mb-2">{getWeatherIcon(item.weather[0].icon)}</div>
-                  <div className="text-sm font-light text-white">
-                    +{Math.round(item.main.temp)}°
+                <div key={index} className="text-center bg-black/30 backdrop-blur-md rounded-lg p-2 border border-white/10">
+                  <div className="text-xs text-white/70 mb-1">{timeLabel}</div>
+                  <div className="text-xl mb-1">{getWeatherIcon(item.weather[0].icon)}</div>
+                  <div className="text-xs text-white">
+                    {Math.round(item.main.temp)}°
                   </div>
-                  <div className="text-xs text-white/70 font-light mt-1">
-                    {formatTime(item.dt)}
+                  <div className="text-xs text-white/60 mt-1">
+                    {formatTime(item.dt).slice(0, 5)}
                   </div>
                 </div>
               );
@@ -319,54 +319,54 @@ const WeatherWidget = () => {
         </div>
 
         {/* 5일 예보 */}
-        <div className="space-y-3">
-          <h3 className="text-lg font-light mb-4 text-white/90">SHOW FOR 5 DAYS</h3>
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium mb-3 text-white/90">5일간 날씨 예보</h3>
           {forecast7d.map((day, index) => {
-            const dayName = index === 0 ? 'TODAY' : 
-                           new Date(day.dt * 1000).toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
-            const dateStr = new Date(day.dt * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const dayName = index === 0 ? '오늘' : 
+                           new Date(day.dt * 1000).toLocaleDateString('ko-KR', { weekday: 'long' });
+            const dateStr = new Date(day.dt * 1000).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
             
             return (
-              <div key={index} className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="min-w-[80px]">
-                      <div className="text-sm font-light text-white">{dayName}</div>
-                      <div className="text-xs text-white/70 font-light">{dateStr}</div>
+              <div key={index} className="bg-black/30 backdrop-blur-md border border-white/10 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="min-w-[60px]">
+                      <div className="text-sm text-white">{dayName}</div>
+                      <div className="text-xs text-white/60">{dateStr}</div>
                     </div>
-                    <div className="text-3xl">{getWeatherIcon(day.weather[0].icon)}</div>
+                    <div className="text-2xl">{getWeatherIcon(day.weather[0].icon)}</div>
                     <div className="flex-1">
-                      <div className="text-white font-light capitalize">{day.weather[0].description}</div>
-                      <div className="text-xs text-white/70 font-light">
-                        강수확률: {Math.round(day.pop * 100)}% | 운량: {day.clouds || 0}%
+                      <div className="text-sm text-white capitalize">{day.weather[0].description}</div>
+                      <div className="text-xs text-white/60">
+                        강수 {Math.round(day.pop * 100)}% | 운량 {day.clouds || 0}%
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-light text-white">
-                      +{Math.round(day.temp.max)}° / +{Math.round(day.temp.min)}°
+                    <div className="text-sm text-white">
+                      {Math.round(day.temp.max)}° / {Math.round(day.temp.min)}°
                     </div>
-                    <div className="text-xs text-white/70 font-light mt-1">
-                      발전효율: {100 - (day.clouds || 0)}%
+                    <div className="text-xs text-white/60 mt-1">
+                      효율 {100 - (day.clouds || 0)}%
                     </div>
                   </div>
                 </div>
                 
                 {/* 발전 효율 프로그레스 바 */}
-                <div className="mt-3">
+                <div className="mt-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-white/70 font-light">⚡</span>
-                    <div className="flex-1 bg-white/20 rounded-full h-1.5">
+                    <span className="text-xs text-white/60">⚡</span>
+                    <div className="flex-1 bg-white/20 rounded-full h-1">
                       <div 
-                        className={`h-1.5 rounded-full transition-all duration-500 ${
-                          (100 - (day.clouds || 0)) >= 80 ? 'bg-green-400' :
+                        className={`h-1 rounded-full transition-all duration-500 ${
+                          (100 - (day.clouds || 0)) >= 80 ? 'bg-emerald-400' :
                           (100 - (day.clouds || 0)) >= 60 ? 'bg-yellow-400' :
                           (100 - (day.clouds || 0)) >= 40 ? 'bg-orange-400' : 'bg-red-400'
                         }`}
                         style={{ width: `${100 - (day.clouds || 0)}%` }}
                       ></div>
                     </div>
-                    <span className="text-xs font-light text-white/90 min-w-[40px]">
+                    <span className="text-xs text-white/80 min-w-[35px] text-right">
                       {100 - (day.clouds || 0)}%
                     </span>
                   </div>

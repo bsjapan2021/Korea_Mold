@@ -9,11 +9,13 @@
     "npm": ">=7.0.0"
   },
   "dependencies": {
+    "@types/three": "^0.178.1",
     "axios": "^1.11.0",
     "lucide-react": "^0.263.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1"
+    "react-scripts": "5.0.1",
+    "three": "^0.178.0"
   },
   "scripts": {
     "start": "react-scripts start",
