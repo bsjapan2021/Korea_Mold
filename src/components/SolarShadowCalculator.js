@@ -392,79 +392,183 @@ const SolarShadowCalculator = () => {
     return Math.min(100, baseLoss * impactMultiplier * elevationFactor);
   };
 
+  // 다중 건물 복합 그림자 계산
+  const calculateMultiBuildingShadow = (latitude, month, hour) => {
+    const elevation = calculateSolarElevation(latitude, month, hour);
+    const azimuth = calculateSolarAzimuth(latitude, month, hour);
+    
+    if (elevation === undefined || azimuth === undefined) {
+      return null;
+    }
+
+    const buildings = getCurrentBuildingLayout();
+    if (buildings.length === 0) {
+      return {
+        elevation,
+        azimuth,
+        totalShadowData: null,
+        totalShadingData: null,
+        totalMultiPanelData: null,
+        totalPowerLoss: 0,
+        buildingDetails: []
+      };
+    }
+
+    let maxShadowLength = 0;
+    let maxEffectiveShadow = 0;
+    let maxShadingPercentage = 0;
+    let totalPowerLoss = 0;
+    let maxAngleDiff = 0;
+    const buildingDetails = [];
+
+    // 각 건물별 그림자 영향 계산
+    buildings.forEach((building, index) => {
+      const distance = Math.sqrt(Math.pow(building.x - 25, 2) + Math.pow(building.z, 2));
+      
+      const shadowData = calculate3DShadow(
+        inputs.buildingHeight,
+        inputs.solarBuildingHeight,
+        elevation,
+        azimuth,
+        building.orientation,
+        distance
+      );
+
+      const shadingData = calculateAdvancedShading(
+        shadowData,
+        distance,
+        inputs.panelDepth,
+        inputs.panelOrientation,
+        azimuth,
+        inputs.panelTilt
+      );
+
+      const powerLoss = calculateAdvancedPowerLoss(shadingData, elevation);
+
+      buildingDetails.push({
+        buildingIndex: index,
+        building: building,
+        distance: distance,
+        shadowData: shadowData,
+        shadingData: shadingData,
+        powerLoss: powerLoss
+      });
+
+      // 최대값 추적 (가장 영향이 큰 건물 기준)
+      if (shadowData.shadowLength > maxShadowLength) {
+        maxShadowLength = shadowData.shadowLength;
+      }
+      if (shadowData.effectiveShadow > maxEffectiveShadow) {
+        maxEffectiveShadow = shadowData.effectiveShadow;
+        maxAngleDiff = shadowData.angleDiff;
+      }
+      if (shadingData.shadingPercentage > maxShadingPercentage) {
+        maxShadingPercentage = shadingData.shadingPercentage;
+      }
+      
+      // 발전량 손실은 가중 평균 (거리 기반)
+      totalPowerLoss += powerLoss * (1 / (distance + 1)); // 거리 가중치
+    });
+
+    // 가중 평균으로 총 발전량 손실 계산
+    const totalWeight = buildings.reduce((sum, building) => {
+      const distance = Math.sqrt(Math.pow(building.x - 25, 2) + Math.pow(building.z, 2));
+      return sum + (1 / (distance + 1));
+    }, 0);
+    
+    totalPowerLoss = totalWeight > 0 ? totalPowerLoss / totalWeight : 0;
+
+    // 가장 영향이 큰 건물 기준으로 다중 패널 계산
+    const dominantBuilding = buildingDetails.reduce((max, current) => 
+      current.powerLoss > max.powerLoss ? current : max, buildingDetails[0]
+    );
+
+    const multiPanelData = dominantBuilding ? 
+      calculateMultiPanelShading(dominantBuilding.shadowData, inputs, azimuth) : null;
+
+    return {
+      elevation,
+      azimuth,
+      totalShadowData: {
+        shadowLength: maxShadowLength,
+        effectiveShadow: maxEffectiveShadow,
+        angleDiff: maxAngleDiff
+      },
+      totalShadingData: {
+        shadingPercentage: maxShadingPercentage
+      },
+      totalMultiPanelData: multiPanelData,
+      totalPowerLoss: totalPowerLoss,
+      buildingDetails: buildingDetails
+    };
+  };
+
   // 계산 실행
   const calculate = () => {
     try {
-      const elevation = calculateSolarElevation(inputs.latitude, inputs.month, inputs.hour);
-      const azimuth = calculateSolarAzimuth(inputs.latitude, inputs.month, inputs.hour);
+      // 다중 건물 복합 그림자 계산 사용
+      const multiResult = calculateMultiBuildingShadow(inputs.latitude, inputs.month, inputs.hour);
       
-      // undefined 체크
-      if (elevation === undefined || azimuth === undefined) {
-        console.error('Solar elevation or azimuth calculation failed');
+      if (!multiResult) {
+        console.error('Multi-building shadow calculation failed');
         return;
       }
-      
-      const shadowData = calculate3DShadow(
-        inputs.buildingHeight, 
-        inputs.solarBuildingHeight, 
-        elevation, 
-        azimuth, 
-        inputs.buildingOrientation, 
-        inputs.distance
-      );
-      
-      // shadowData undefined 체크
-      if (!shadowData) {
-        console.error('Shadow data calculation failed');
-        return;
-      }
-      
-      // 단일 패널 계산 (기존 방식)
-      const shadingData = calculateAdvancedShading(
-        shadowData, 
-        inputs.distance, 
-        inputs.panelDepth, 
-        inputs.panelOrientation, 
-        azimuth, 
-        inputs.panelTilt
-      );
-      
-      // shadingData undefined 체크
-      if (!shadingData) {
-        console.error('Shading data calculation failed');
-        return;
-      }
-      
-      // 다중 패널 시스템 계산 (새로운 방식)
-      const multiPanelData = calculateMultiPanelShading(shadowData, inputs, azimuth);
-      const powerLoss = calculateAdvancedPowerLoss(shadingData, elevation);
 
-      // 모든 값이 유효한지 확인 후 결과 설정
-      if (multiPanelData && powerLoss !== undefined) {
+      const { elevation, azimuth, totalShadowData, totalShadingData, totalMultiPanelData, totalPowerLoss } = multiResult;
+
+      // 결과가 없는 경우 기본값 설정
+      if (!totalShadowData) {
         setResults({
           elevation: (elevation || 0).toFixed(1),
           azimuth: (azimuth || 0).toFixed(1),
-          shadowLength: (shadowData.shadowLength || 0).toFixed(1),
-          effectiveShadow: (shadowData.effectiveShadow || 0).toFixed(1),
-          angleDiff: (shadowData.angleDiff || 0).toFixed(1),
-          shadingPercentage: (shadingData.shadingPercentage || 0).toFixed(1),
-          powerLoss: (powerLoss || 0).toFixed(1),
-          directImpact: shadingData.directImpact,
-          orientationFactor: ((shadingData.orientationFactor || 0) * 100).toFixed(1),
-          // 다중 패널 결과 추가
-          multiPanel: {
-            totalPanels: multiPanelData.totalPanels || 0,
-            affectedPanels: multiPanelData.totalAffectedPanels || 0,
-            affectedPercentage: (multiPanelData.affectedPercentage || 0).toFixed(1),
-            averageShadingPercentage: (multiPanelData.averageShadingPercentage || 0).toFixed(1),
-            totalPowerLoss: (multiPanelData.totalPowerLoss || 0).toFixed(1),
-            shadowOnRoof: (multiPanelData.shadowOnRoof || 0).toFixed(1),
-            shadingMap: multiPanelData.shadingMap || []
-          }
+          shadowLength: '0.0',
+          effectiveShadow: '0.0',
+          angleDiff: '0.0',
+          shadingPercentage: '0.0',
+          orientationFactor: '100.0',
+          powerLoss: '0.0',
+          directImpact: false,
+          multiPanel: null
         });
+        return;
       }
+
+      // 모든 값이 유효한지 확인 후 결과 설정
+      setResults({
+        elevation: (elevation || 0).toFixed(1),
+        azimuth: (azimuth || 0).toFixed(1),
+        shadowLength: (totalShadowData.shadowLength || 0).toFixed(1),
+        effectiveShadow: (totalShadowData.effectiveShadow || 0).toFixed(1),
+        angleDiff: (totalShadowData.angleDiff || 0).toFixed(1),
+        shadingPercentage: (totalShadingData.shadingPercentage || 0).toFixed(1),
+        orientationFactor: '100.0', // 다중 건물에서는 복합 계산
+        powerLoss: (totalPowerLoss || 0).toFixed(1),
+        directImpact: totalShadowData.angleDiff <= 90,
+        multiPanel: totalMultiPanelData ? {
+          totalPanels: totalMultiPanelData.totalPanels,
+          affectedPanels: totalMultiPanelData.totalAffectedPanels,
+          affectedPercentage: totalMultiPanelData.affectedPercentage.toFixed(1),
+          averageShadingPercentage: totalMultiPanelData.averageShadingPercentage.toFixed(1),
+          totalPowerLoss: totalMultiPanelData.totalPowerLoss.toFixed(1),
+          shadowOnRoof: totalMultiPanelData.shadowOnRoof.toFixed(1),
+          shadingMap: totalMultiPanelData.shadingMap
+        } : null
+      });
     } catch (error) {
-      console.error('계산 중 오류 발생:', error);
+      console.error('계산 중 오류:', error);
+      // 오류 발생 시 기본값 설정
+      setResults({
+        elevation: '0.0',
+        azimuth: '0.0',
+        shadowLength: '0.0',
+        effectiveShadow: '0.0',
+        angleDiff: '0.0',
+        shadingPercentage: '0.0',
+        orientationFactor: '100.0',
+        powerLoss: '0.0',
+        directImpact: false,
+        multiPanel: null
+      });
     }
   };
 
@@ -474,49 +578,23 @@ const SolarShadowCalculator = () => {
     
     const data = hours.map(hour => {
       try {
-        const elevation = calculateSolarElevation(inputs.latitude, inputs.month, hour);
-        const azimuth = calculateSolarAzimuth(inputs.latitude, inputs.month, hour);
+        // 다중 건물 복합 그림자 계산 사용
+        const multiResult = calculateMultiBuildingShadow(inputs.latitude, inputs.month, hour);
         
-        if (elevation === undefined || azimuth === undefined) {
+        if (!multiResult || !multiResult.totalShadowData) {
           return null;
         }
-        
-        const shadowData = calculate3DShadow(
-          inputs.buildingHeight, 
-          inputs.solarBuildingHeight, 
-          elevation, 
-          azimuth, 
-          inputs.buildingOrientation, 
-          inputs.distance
-        );
-        
-        if (!shadowData) {
-          return null;
-        }
-        
-        const shadingData = calculateAdvancedShading(
-          shadowData, 
-          inputs.distance, 
-          inputs.panelDepth, 
-          inputs.panelOrientation, 
-          azimuth, 
-          inputs.panelTilt
-        );
-        
-        if (!shadingData) {
-          return null;
-        }
-        
-        const powerLoss = calculateAdvancedPowerLoss(shadingData, elevation);
+
+        const { elevation, azimuth, totalShadowData, totalShadingData, totalPowerLoss } = multiResult;
         
         return { 
           hour, 
           elevation: (elevation || 0).toFixed(1), 
           azimuth: (azimuth || 0).toFixed(1),
-          shadowLength: (shadowData.effectiveShadow || 0).toFixed(1),
-          shadingPercentage: (shadingData.shadingPercentage || 0).toFixed(1),
-          powerLoss: (powerLoss || 0).toFixed(1),
-          directImpact: shadingData.directImpact || false
+          shadowLength: (totalShadowData.effectiveShadow || 0).toFixed(1),
+          shadingPercentage: (totalShadingData.shadingPercentage || 0).toFixed(1),
+          powerLoss: (totalPowerLoss || 0).toFixed(1),
+          directImpact: totalShadowData.angleDiff <= 90
         };
       } catch (error) {
         console.error(`시간별 데이터 계산 오류 (${hour}시):`, error);
@@ -567,47 +645,27 @@ const SolarShadowCalculator = () => {
       
       hours.forEach(hour => {
         try {
-          const elevation = calculateSolarElevation(inputs.latitude, month, hour);
-          const azimuth = calculateSolarAzimuth(inputs.latitude, month, hour);
+          // 다중 건물 복합 그림자 계산 사용
+          const multiResult = calculateMultiBuildingShadow(inputs.latitude, month, hour);
           
-          if (elevation <= 0) return; // 태양이 뜨지 않은 시간 제외
+          if (!multiResult || !multiResult.totalShadowData || multiResult.elevation <= 0) {
+            return; // 태양이 뜨지 않은 시간 제외
+          }
           
-          const shadowData = calculate3DShadow(
-            inputs.buildingHeight, 
-            inputs.solarBuildingHeight, 
-            elevation, 
-            azimuth, 
-            inputs.buildingOrientation, 
-            inputs.distance
-          );
-          
-          if (!shadowData) return;
-          
-          const shadingData = calculateAdvancedShading(
-            shadowData, 
-            inputs.distance, 
-            inputs.panelDepth, 
-            inputs.panelOrientation, 
-            azimuth, 
-            inputs.panelTilt
-          );
-          
-          if (!shadingData) return;
-          
-          const powerLoss = calculateAdvancedPowerLoss(shadingData, elevation);
+          const { elevation, totalShadowData, totalPowerLoss } = multiResult;
           
           // 태양 강도 가중치 계산
           const solarWeight = getSolarIntensityWeight(hour, elevation);
           
-          totalWeightedLoss += (powerLoss || 0) * solarWeight;
+          totalWeightedLoss += (totalPowerLoss || 0) * solarWeight;
           totalWeight += solarWeight;
           
           monthData.push({ 
             hour, 
             elevation: elevation || 0, 
-            shadowLength: shadowData.effectiveShadow || 0, 
-            shadingPercentage: shadingData.shadingPercentage || 0, 
-            powerLoss: powerLoss || 0,
+            shadowLength: totalShadowData.effectiveShadow || 0, 
+            shadingPercentage: totalShadowData.shadingPercentage || 0, 
+            powerLoss: totalPowerLoss || 0,
             solarWeight: solarWeight.toFixed(3)
           });
         } catch (error) {
@@ -618,29 +676,14 @@ const SolarShadowCalculator = () => {
       // 가중 평균 계산 (태양 강도 고려)
       const weightedAvgLoss = totalWeight > 0 ? totalWeightedLoss / totalWeight : 0;
       
-      // 기존 3시간 평균도 비교용으로 계산
+      // 기존 3시간 평균도 비교용으로 계산 (다중 건물 방식 사용)
       const simpleHours = [9, 12, 15];
       const simpleLoss = simpleHours.reduce((sum, hour) => {
-        const elevation = calculateSolarElevation(inputs.latitude, month, hour);
-        if (elevation <= 0) return sum;
-        
-        const azimuth = calculateSolarAzimuth(inputs.latitude, month, hour);
-        const shadowData = calculate3DShadow(
-          inputs.buildingHeight, inputs.solarBuildingHeight, elevation, azimuth, 
-          inputs.buildingOrientation, inputs.distance
-        );
-        
-        if (!shadowData) return sum;
-        
-        const shadingData = calculateAdvancedShading(
-          shadowData, inputs.distance, inputs.panelDepth, 
-          inputs.panelOrientation, azimuth, inputs.panelTilt
-        );
-        
-        if (!shadingData) return sum;
-        
-        const powerLoss = calculateAdvancedPowerLoss(shadingData, elevation);
-        return sum + (powerLoss || 0);
+        const multiResult = calculateMultiBuildingShadow(inputs.latitude, month, hour);
+        if (!multiResult || !multiResult.totalShadowData || multiResult.elevation <= 0) {
+          return sum;
+        }
+        return sum + (multiResult.totalPowerLoss || 0);
       }, 0) / simpleHours.length;
       
       return { 
@@ -927,7 +970,7 @@ const SolarShadowCalculator = () => {
                         </button>
                       </div>
                       
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 gap-2 mb-3">
                         <div>
                           <label className="block text-xs text-gray-400 mb-1">X 위치 (m)</label>
                           <input
@@ -948,23 +991,172 @@ const SolarShadowCalculator = () => {
                             step="1"
                           />
                         </div>
-                        <div>
-                          <label className="block text-xs text-gray-400 mb-1">방향 (°)</label>
-                          <select
-                            value={building.orientation}
-                            onChange={(e) => updateBuildingOrientation(building.id, Number(e.target.value))}
-                            className={`w-full px-2 py-1 border rounded text-xs ${inputClass}`}
+                      </div>
+                      
+                      {/* 건물 방향 회전 컨트롤 */}
+                      <div className="bg-gray-700/50 p-3 rounded-lg border border-gray-600">
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-xs text-gray-400">건물 방향 ({getDirectionName(building.orientation)})</label>
+                          <span className="text-xs font-bold text-yellow-400">{building.orientation}°</span>
+                        </div>
+                        
+                        <input
+                          type="range"
+                          min="0"
+                          max="359"
+                          value={building.orientation}
+                          onChange={(e) => updateBuildingOrientation(building.id, Number(e.target.value))}
+                          className="w-full mb-2"
+                          step="5"
+                        />
+                        
+                        <div className="flex justify-between text-xs text-gray-500 mb-2">
+                          <span>북(0°)</span>
+                          <span>동(90°)</span>
+                          <span>남(180°)</span>
+                          <span>서(270°)</span>
+                        </div>
+                        
+                        {/* 방향 프리셋 버튼들 */}
+                        <div className="grid grid-cols-4 gap-1">
+                          <button
+                            onClick={() => updateBuildingOrientation(building.id, 0)}
+                            className={`px-2 py-1 text-xs rounded transition-colors ${
+                              building.orientation === 0 
+                                ? 'bg-blue-600 text-white' 
+                                : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                            }`}
                           >
-                            <option value={0}>북 (0°)</option>
-                            <option value={90}>동 (90°)</option>
-                            <option value={180}>남 (180°)</option>
-                            <option value={270}>서 (270°)</option>
-                          </select>
+                            북
+                          </button>
+                          <button
+                            onClick={() => updateBuildingOrientation(building.id, 90)}
+                            className={`px-2 py-1 text-xs rounded transition-colors ${
+                              building.orientation === 90 
+                                ? 'bg-blue-600 text-white' 
+                                : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                            }`}
+                          >
+                            동
+                          </button>
+                          <button
+                            onClick={() => updateBuildingOrientation(building.id, 180)}
+                            className={`px-2 py-1 text-xs rounded transition-colors ${
+                              building.orientation === 180 
+                                ? 'bg-blue-600 text-white' 
+                                : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                            }`}
+                          >
+                            남
+                          </button>
+                          <button
+                            onClick={() => updateBuildingOrientation(building.id, 270)}
+                            className={`px-2 py-1 text-xs rounded transition-colors ${
+                              building.orientation === 270 
+                                ? 'bg-blue-600 text-white' 
+                                : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                            }`}
+                          >
+                            서
+                          </button>
+                        </div>
+                        
+                        {/* 미세 조정 버튼들 */}
+                        <div className="flex justify-center gap-1 mt-2">
+                          <button
+                            onClick={() => updateBuildingOrientation(building.id, (building.orientation - 15 + 360) % 360)}
+                            className="px-2 py-1 text-xs bg-gray-600 text-gray-300 hover:bg-gray-500 rounded transition-colors"
+                            title="반시계방향 15° 회전"
+                          >
+                            ↶ -15°
+                          </button>
+                          <button
+                            onClick={() => updateBuildingOrientation(building.id, (building.orientation - 5 + 360) % 360)}
+                            className="px-2 py-1 text-xs bg-gray-600 text-gray-300 hover:bg-gray-500 rounded transition-colors"
+                            title="반시계방향 5° 회전"
+                          >
+                            ↶ -5°
+                          </button>
+                          <button
+                            onClick={() => updateBuildingOrientation(building.id, (building.orientation + 5) % 360)}
+                            className="px-2 py-1 text-xs bg-gray-600 text-gray-300 hover:bg-gray-500 rounded transition-colors"
+                            title="시계방향 5° 회전"
+                          >
+                            +5° ↷
+                          </button>
+                          <button
+                            onClick={() => updateBuildingOrientation(building.id, (building.orientation + 15) % 360)}
+                            className="px-2 py-1 text-xs bg-gray-600 text-gray-300 hover:bg-gray-500 rounded transition-colors"
+                            title="시계방향 15° 회전"
+                          >
+                            +15° ↷
+                          </button>
                         </div>
                       </div>
                       
+                      {/* 실시간 그림자 영향 정보 */}
+                      <div className="bg-blue-900/30 p-2 rounded mt-2 border border-blue-700/50">
+                        <div className="text-xs text-blue-300 font-medium mb-1">실시간 영향 분석</div>
+                        {(() => {
+                          // 이 건물의 개별 그림자 영향 계산
+                          try {
+                            const elevation = calculateSolarElevation(inputs.latitude, inputs.month, inputs.hour);
+                            const azimuth = calculateSolarAzimuth(inputs.latitude, inputs.month, inputs.hour);
+                            const shadowData = calculate3DShadow(
+                              inputs.buildingHeight,
+                              inputs.solarBuildingHeight,
+                              elevation,
+                              azimuth,
+                              building.orientation,
+                              Math.sqrt(Math.pow(building.x - 25, 2) + Math.pow(building.z, 2)) // 태양광 건물과의 거리
+                            );
+                            const shadingData = calculateAdvancedShading(
+                              shadowData,
+                              Math.sqrt(Math.pow(building.x - 25, 2) + Math.pow(building.z, 2)),
+                              inputs.panelDepth,
+                              inputs.panelOrientation,
+                              azimuth,
+                              inputs.panelTilt
+                            );
+                            const powerLoss = calculateAdvancedPowerLoss(shadingData, elevation);
+                            
+                            return (
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <span className="text-gray-400">그림자 길이:</span>
+                                  <span className="ml-1 text-yellow-400 font-medium">{shadowData.effectiveShadow.toFixed(1)}m</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-400">차폐율:</span>
+                                  <span className="ml-1 text-orange-400 font-medium">{shadingData.shadingPercentage.toFixed(1)}%</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-400">방향차이:</span>
+                                  <span className="ml-1 text-purple-400 font-medium">{shadowData.angleDiff.toFixed(0)}°</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-400">발전손실:</span>
+                                  <span className={`ml-1 font-medium ${
+                                    powerLoss < 5 ? 'text-green-400' : 
+                                    powerLoss < 20 ? 'text-yellow-400' : 'text-red-400'
+                                  }`}>
+                                    {powerLoss.toFixed(1)}%
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          } catch (error) {
+                            return (
+                              <div className="text-xs text-gray-500">
+                                계산 중...
+                              </div>
+                            );
+                          }
+                        })()}
+                      </div>
+                      
                       <div className="mt-2 text-xs text-gray-400">
-                        <span>위치: ({building.x}, {building.z}), 방향: {building.orientation}°</span>
+                        <span>위치: ({building.x}, {building.z}), 방향: {building.orientation}° ({getDirectionName(building.orientation)})</span>
                       </div>
                     </div>
                   ))}
