@@ -1,6 +1,6 @@
 {
   "name": "solar-shadow-calculator",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "3D 태양광 패널 그림자 영향 계산기",
   "private": true,
   "homepage": ".",
