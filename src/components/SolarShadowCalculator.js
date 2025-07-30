@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Sun, Building, Info, Compass, Moon } from 'lucide-react';
+import { Sun, Building, Info, Compass } from 'lucide-react';
 
 const SolarShadowCalculator = () => {
-  // 다크모드 상태 관리
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
   // 대한민국 주요 도시 위도 데이터
   const koreaLatitudes = [
     { city: '서울', latitude: 37.5665 },
@@ -76,11 +73,6 @@ const SolarShadowCalculator = () => {
         latitude: selectedCityData.latitude 
       }));
     }
-  };
-
-  // 다크모드 토글
-  const toggleDarkMode = () => {
-    setIsDarkMode(prev => !prev);
   };
 
   // 태양 고도각 계산
@@ -286,61 +278,16 @@ const SolarShadowCalculator = () => {
 
   // 계산 실행
   const calculate = () => {
-    const elevation = calculateSolarElevation(inputs.latitude, inputs.month, inputs.hour);
-    const azimuth = calculateSolarAzimuth(inputs.latitude, inputs.month, inputs.hour);
-    const shadowData = calculate3DShadow(
-      inputs.buildingHeight, 
-      inputs.solarBuildingHeight, 
-      elevation, 
-      azimuth, 
-      inputs.buildingOrientation, 
-      inputs.distance
-    );
-    
-    // 단일 패널 계산 (기존 방식)
-    const shadingData = calculateAdvancedShading(
-      shadowData, 
-      inputs.distance, 
-      inputs.panelDepth, 
-      inputs.panelOrientation, 
-      azimuth, 
-      inputs.panelTilt
-    );
-    
-    // 다중 패널 시스템 계산 (새로운 방식)
-    const multiPanelData = calculateMultiPanelShading(shadowData, inputs, azimuth);
-    const powerLoss = calculateAdvancedPowerLoss(shadingData, elevation);
-
-    setResults({
-      elevation: elevation.toFixed(1),
-      azimuth: azimuth.toFixed(1),
-      shadowLength: shadowData.shadowLength.toFixed(1),
-      effectiveShadow: shadowData.effectiveShadow.toFixed(1),
-      angleDiff: shadowData.angleDiff.toFixed(1),
-      shadingPercentage: shadingData.shadingPercentage.toFixed(1),
-      powerLoss: powerLoss.toFixed(1),
-      directImpact: shadingData.directImpact,
-      orientationFactor: (shadingData.orientationFactor * 100).toFixed(1),
-      // 다중 패널 결과 추가
-      multiPanel: {
-        totalPanels: multiPanelData.totalPanels,
-        affectedPanels: multiPanelData.totalAffectedPanels,
-        affectedPercentage: multiPanelData.affectedPercentage.toFixed(1),
-        averageShadingPercentage: multiPanelData.averageShadingPercentage.toFixed(1),
-        totalPowerLoss: multiPanelData.totalPowerLoss.toFixed(1),
-        shadowOnRoof: multiPanelData.shadowOnRoof.toFixed(1),
-        shadingMap: multiPanelData.shadingMap
+    try {
+      const elevation = calculateSolarElevation(inputs.latitude, inputs.month, inputs.hour);
+      const azimuth = calculateSolarAzimuth(inputs.latitude, inputs.month, inputs.hour);
+      
+      // undefined 체크
+      if (elevation === undefined || azimuth === undefined) {
+        console.error('Solar elevation or azimuth calculation failed');
+        return;
       }
-    });
-  };
-
-  // 시간별 데이터 계산
-  const calculateHourlyData = () => {
-    const hours = Array.from({length: 13}, (_, i) => i + 6); // 6시~18시
-    
-    const data = hours.map(hour => {
-      const elevation = calculateSolarElevation(inputs.latitude, inputs.month, hour);
-      const azimuth = calculateSolarAzimuth(inputs.latitude, inputs.month, hour);
+      
       const shadowData = calculate3DShadow(
         inputs.buildingHeight, 
         inputs.solarBuildingHeight, 
@@ -349,6 +296,14 @@ const SolarShadowCalculator = () => {
         inputs.buildingOrientation, 
         inputs.distance
       );
+      
+      // shadowData undefined 체크
+      if (!shadowData) {
+        console.error('Shadow data calculation failed');
+        return;
+      }
+      
+      // 단일 패널 계산 (기존 방식)
       const shadingData = calculateAdvancedShading(
         shadowData, 
         inputs.distance, 
@@ -357,18 +312,101 @@ const SolarShadowCalculator = () => {
         azimuth, 
         inputs.panelTilt
       );
-      const powerLoss = calculateAdvancedPowerLoss(shadingData, elevation);
       
-      return { 
-        hour, 
-        elevation: elevation.toFixed(1), 
-        azimuth: azimuth.toFixed(1),
-        shadowLength: shadowData.effectiveShadow.toFixed(1),
-        shadingPercentage: shadingData.shadingPercentage.toFixed(1),
-        powerLoss: powerLoss.toFixed(1),
-        directImpact: shadingData.directImpact
-      };
-    });
+      // shadingData undefined 체크
+      if (!shadingData) {
+        console.error('Shading data calculation failed');
+        return;
+      }
+      
+      // 다중 패널 시스템 계산 (새로운 방식)
+      const multiPanelData = calculateMultiPanelShading(shadowData, inputs, azimuth);
+      const powerLoss = calculateAdvancedPowerLoss(shadingData, elevation);
+
+      // 모든 값이 유효한지 확인 후 결과 설정
+      if (multiPanelData && powerLoss !== undefined) {
+        setResults({
+          elevation: (elevation || 0).toFixed(1),
+          azimuth: (azimuth || 0).toFixed(1),
+          shadowLength: (shadowData.shadowLength || 0).toFixed(1),
+          effectiveShadow: (shadowData.effectiveShadow || 0).toFixed(1),
+          angleDiff: (shadowData.angleDiff || 0).toFixed(1),
+          shadingPercentage: (shadingData.shadingPercentage || 0).toFixed(1),
+          powerLoss: (powerLoss || 0).toFixed(1),
+          directImpact: shadingData.directImpact,
+          orientationFactor: ((shadingData.orientationFactor || 0) * 100).toFixed(1),
+          // 다중 패널 결과 추가
+          multiPanel: {
+            totalPanels: multiPanelData.totalPanels || 0,
+            affectedPanels: multiPanelData.totalAffectedPanels || 0,
+            affectedPercentage: (multiPanelData.affectedPercentage || 0).toFixed(1),
+            averageShadingPercentage: (multiPanelData.averageShadingPercentage || 0).toFixed(1),
+            totalPowerLoss: (multiPanelData.totalPowerLoss || 0).toFixed(1),
+            shadowOnRoof: (multiPanelData.shadowOnRoof || 0).toFixed(1),
+            shadingMap: multiPanelData.shadingMap || []
+          }
+        });
+      }
+    } catch (error) {
+      console.error('계산 중 오류 발생:', error);
+    }
+  };
+
+  // 시간별 데이터 계산
+  const calculateHourlyData = () => {
+    const hours = Array.from({length: 13}, (_, i) => i + 6); // 6시~18시
+    
+    const data = hours.map(hour => {
+      try {
+        const elevation = calculateSolarElevation(inputs.latitude, inputs.month, hour);
+        const azimuth = calculateSolarAzimuth(inputs.latitude, inputs.month, hour);
+        
+        if (elevation === undefined || azimuth === undefined) {
+          return null;
+        }
+        
+        const shadowData = calculate3DShadow(
+          inputs.buildingHeight, 
+          inputs.solarBuildingHeight, 
+          elevation, 
+          azimuth, 
+          inputs.buildingOrientation, 
+          inputs.distance
+        );
+        
+        if (!shadowData) {
+          return null;
+        }
+        
+        const shadingData = calculateAdvancedShading(
+          shadowData, 
+          inputs.distance, 
+          inputs.panelDepth, 
+          inputs.panelOrientation, 
+          azimuth, 
+          inputs.panelTilt
+        );
+        
+        if (!shadingData) {
+          return null;
+        }
+        
+        const powerLoss = calculateAdvancedPowerLoss(shadingData, elevation);
+        
+        return { 
+          hour, 
+          elevation: (elevation || 0).toFixed(1), 
+          azimuth: (azimuth || 0).toFixed(1),
+          shadowLength: (shadowData.effectiveShadow || 0).toFixed(1),
+          shadingPercentage: (shadingData.shadingPercentage || 0).toFixed(1),
+          powerLoss: (powerLoss || 0).toFixed(1),
+          directImpact: shadingData.directImpact || false
+        };
+      } catch (error) {
+        console.error(`시간별 데이터 계산 오류 (${hour}시):`, error);
+        return null;
+      }
+    }).filter(data => data !== null);
     
     setHourlyData(data);
   };
@@ -380,31 +418,57 @@ const SolarShadowCalculator = () => {
     
     const data = months.map(month => {
       const monthData = hours.map(hour => {
-        const elevation = calculateSolarElevation(inputs.latitude, month, hour);
-        const azimuth = calculateSolarAzimuth(inputs.latitude, month, hour);
-        const shadowData = calculate3DShadow(
-          inputs.buildingHeight, 
-          inputs.solarBuildingHeight, 
-          elevation, 
-          azimuth, 
-          inputs.buildingOrientation, 
-          inputs.distance
-        );
-        const shadingData = calculateAdvancedShading(
-          shadowData, 
-          inputs.distance, 
-          inputs.panelDepth, 
-          inputs.panelOrientation, 
-          azimuth, 
-          inputs.panelTilt
-        );
-        const powerLoss = calculateAdvancedPowerLoss(shadingData, elevation);
-        
-        return { hour, elevation, shadowLength: shadowData.effectiveShadow, shadingPercentage: shadingData.shadingPercentage, powerLoss };
+        try {
+          const elevation = calculateSolarElevation(inputs.latitude, month, hour);
+          const azimuth = calculateSolarAzimuth(inputs.latitude, month, hour);
+          
+          if (elevation === undefined || azimuth === undefined) {
+            return { hour, elevation: 0, shadowLength: 0, shadingPercentage: 0, powerLoss: 0 };
+          }
+          
+          const shadowData = calculate3DShadow(
+            inputs.buildingHeight, 
+            inputs.solarBuildingHeight, 
+            elevation, 
+            azimuth, 
+            inputs.buildingOrientation, 
+            inputs.distance
+          );
+          
+          if (!shadowData) {
+            return { hour, elevation: elevation || 0, shadowLength: 0, shadingPercentage: 0, powerLoss: 0 };
+          }
+          
+          const shadingData = calculateAdvancedShading(
+            shadowData, 
+            inputs.distance, 
+            inputs.panelDepth, 
+            inputs.panelOrientation, 
+            azimuth, 
+            inputs.panelTilt
+          );
+          
+          if (!shadingData) {
+            return { hour, elevation: elevation || 0, shadowLength: shadowData.effectiveShadow || 0, shadingPercentage: 0, powerLoss: 0 };
+          }
+          
+          const powerLoss = calculateAdvancedPowerLoss(shadingData, elevation);
+          
+          return { 
+            hour, 
+            elevation: elevation || 0, 
+            shadowLength: shadowData.effectiveShadow || 0, 
+            shadingPercentage: shadingData.shadingPercentage || 0, 
+            powerLoss: powerLoss || 0 
+          };
+        } catch (error) {
+          console.error(`연간 데이터 계산 오류 (${month}월 ${hour}시):`, error);
+          return { hour, elevation: 0, shadowLength: 0, shadingPercentage: 0, powerLoss: 0 };
+        }
       });
       
-      const avgLoss = monthData.reduce((sum, data) => sum + data.powerLoss, 0) / monthData.length;
-      return { month, avgLoss: avgLoss.toFixed(1), details: monthData };
+      const avgLoss = monthData.reduce((sum, data) => sum + (data.powerLoss || 0), 0) / monthData.length;
+      return { month, avgLoss: (avgLoss || 0).toFixed(1), details: monthData };
     });
     
     setYearlyData(data);
@@ -433,31 +497,21 @@ const SolarShadowCalculator = () => {
     if (angle >= 292.5 && angle < 337.5) return '북서';
   };
 
-  // 다크모드 클래스
-  const bgClass = isDarkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-blue-50 to-orange-50';
-  const cardClass = isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-800';
-  const textClass = isDarkMode ? 'text-white' : 'text-gray-800';
-  const inputClass = isDarkMode 
-    ? 'bg-gray-700 border-gray-600 text-white focus:ring-blue-400' 
-    : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500';
+  // 다크모드 스타일 (고정)
+  const bgClass = 'bg-gray-900';
+  const cardClass = 'bg-gray-800 text-white';
+  const textClass = 'text-white';
+  const inputClass = 'bg-gray-700 border-gray-600 text-white focus:ring-blue-400';
 
   return (
     <div className={`max-w-7xl mx-auto p-6 ${bgClass} min-h-screen transition-colors duration-300`}>
       <div className="text-center mb-8">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <h1 className={`text-3xl font-bold ${textClass} flex items-center gap-2`}>
-            <Sun className="text-orange-500" />
-            3D 태양광 패널 그림자 영향 계산기
-            <Building className="text-blue-500" />
-          </h1>
-          <button
-            onClick={toggleDarkMode}
-            className={`ml-4 p-2 rounded-full ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'} transition-colors`}
-          >
-            {isDarkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-gray-600" />}
-          </button>
-        </div>
-        <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+        <h1 className={`text-3xl font-bold ${textClass} flex items-center justify-center gap-2 mb-2`}>
+          <Sun className="text-orange-500" />
+          3D 태양광 패널 그림자 영향 계산기
+          <Building className="text-blue-500" />
+        </h1>
+        <p className="text-gray-300">
           건물 방향, 패널 각도를 고려한 정밀 그림자 분석
         </p>
       </div>
@@ -473,7 +527,7 @@ const SolarShadowCalculator = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                <label className={`block text-sm font-medium text-gray-300 mb-1`}>
                   높은 건물 높이 (m)
                 </label>
                 <input
@@ -484,7 +538,7 @@ const SolarShadowCalculator = () => {
                 />
               </div>
               <div>
-                <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                <label className={`block text-sm font-medium text-gray-300 mb-1`}>
                   태양광 건물 높이 (m)
                 </label>
                 <input
@@ -498,7 +552,7 @@ const SolarShadowCalculator = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                <label className={`block text-sm font-medium text-gray-300 mb-1`}>
                   건물 간 거리 (m)
                 </label>
                 <input
@@ -509,7 +563,7 @@ const SolarShadowCalculator = () => {
                 />
               </div>
               <div>
-                <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                <label className={`block text-sm font-medium text-gray-300 mb-1`}>
                   지역 선택
                 </label>
                 <select
@@ -528,7 +582,7 @@ const SolarShadowCalculator = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                <label className={`block text-sm font-medium text-gray-300 mb-1`}>
                   패널 폭 (m)
                 </label>
                 <input
@@ -539,7 +593,7 @@ const SolarShadowCalculator = () => {
                 />
               </div>
               <div>
-                <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                <label className={`block text-sm font-medium text-gray-300 mb-1`}>
                   패널 깊이 (m)
                 </label>
                 <input
@@ -552,12 +606,12 @@ const SolarShadowCalculator = () => {
             </div>
 
             {/* 다중 패널 시스템 설정 */}
-            <div className={`${isDarkMode ? 'bg-blue-900' : 'bg-blue-50'} p-4 rounded-lg`}>
+            <div className={`bg-blue-900 p-4 rounded-lg`}>
               <h3 className="text-sm font-semibold mb-3 text-blue-600">🔷 다중 패널 시스템 설정</h3>
               
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div>
-                  <label className={`block text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                  <label className={`block text-xs font-medium text-gray-300 mb-1`}>
                     옥상 폭 (m)
                   </label>
                   <input
@@ -568,7 +622,7 @@ const SolarShadowCalculator = () => {
                   />
                 </div>
                 <div>
-                  <label className={`block text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                  <label className={`block text-xs font-medium text-gray-300 mb-1`}>
                     옥상 깊이 (m)
                   </label>
                   <input
@@ -582,7 +636,7 @@ const SolarShadowCalculator = () => {
               
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className={`block text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                  <label className={`block text-xs font-medium text-gray-300 mb-1`}>
                     패널 행수
                   </label>
                   <input
@@ -593,7 +647,7 @@ const SolarShadowCalculator = () => {
                   />
                 </div>
                 <div>
-                  <label className={`block text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                  <label className={`block text-xs font-medium text-gray-300 mb-1`}>
                     패널 열수
                   </label>
                   <input
@@ -604,7 +658,7 @@ const SolarShadowCalculator = () => {
                   />
                 </div>
                 <div>
-                  <label className={`block text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                  <label className={`block text-xs font-medium text-gray-300 mb-1`}>
                     행간격 (m)
                   </label>
                   <input
@@ -617,14 +671,14 @@ const SolarShadowCalculator = () => {
                 </div>
               </div>
               
-              <div className={`mt-2 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <div className={`mt-2 text-xs text-gray-300`}>
                 총 패널 수: {inputs.panelRows * inputs.panelCols}장
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>월</label>
+                <label className={`block text-sm font-medium text-gray-300 mb-1`}>월</label>
                 <select
                   value={inputs.month}
                   onChange={(e) => handleInputChange('month', e.target.value)}
@@ -636,7 +690,7 @@ const SolarShadowCalculator = () => {
                 </select>
               </div>
               <div>
-                <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>시간</label>
+                <label className={`block text-sm font-medium text-gray-300 mb-1`}>시간</label>
                 <input
                   type="number"
                   min="6"
@@ -659,7 +713,7 @@ const SolarShadowCalculator = () => {
           
           <div className="space-y-4">
             <div>
-              <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+              <label className={`block text-sm font-medium text-gray-300 mb-1`}>
                 높은 건물 방향 ({getDirectionName(inputs.buildingOrientation)})
               </label>
               <input
@@ -670,7 +724,7 @@ const SolarShadowCalculator = () => {
                 onChange={(e) => handleInputChange('buildingOrientation', e.target.value)}
                 className="w-full"
               />
-              <div className={`flex justify-between text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
+              <div className={`flex justify-between text-xs text-gray-400 mt-1`}>
                 <span>북(0°)</span>
                 <span>동(90°)</span>
                 <span>남(180°)</span>
@@ -682,7 +736,7 @@ const SolarShadowCalculator = () => {
             </div>
 
             <div>
-              <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+              <label className={`block text-sm font-medium text-gray-300 mb-1`}>
                 패널 방향 ({getDirectionName(inputs.panelOrientation)})
               </label>
               <input
@@ -699,7 +753,7 @@ const SolarShadowCalculator = () => {
             </div>
 
             <div>
-              <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+              <label className={`block text-sm font-medium text-gray-300 mb-1`}>
                 패널 기울기: {inputs.panelTilt}°
               </label>
               <input
@@ -710,7 +764,7 @@ const SolarShadowCalculator = () => {
                 onChange={(e) => handleInputChange('panelTilt', e.target.value)}
                 className="w-full"
               />
-              <div className={`flex justify-between text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
+              <div className={`flex justify-between text-xs text-gray-400 mt-1`}>
                 <span>수평(0°)</span>
                 <span>최적(30°)</span>
                 <span>수직(60°)</span>
@@ -718,7 +772,7 @@ const SolarShadowCalculator = () => {
             </div>
 
             <div>
-              <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+              <label className={`block text-sm font-medium text-gray-300 mb-1`}>
                 지형 경사: {inputs.terrainSlope}°
               </label>
               <input
@@ -729,7 +783,7 @@ const SolarShadowCalculator = () => {
                 onChange={(e) => handleInputChange('terrainSlope', e.target.value)}
                 className="w-full"
               />
-              <div className={`flex justify-between text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
+              <div className={`flex justify-between text-xs text-gray-400 mt-1`}>
                 <span>하향(-15°)</span>
                 <span>평지(0°)</span>
                 <span>상향(15°)</span>
@@ -747,46 +801,46 @@ const SolarShadowCalculator = () => {
           
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <div className={`${isDarkMode ? 'bg-blue-900' : 'bg-blue-50'} p-3 rounded-lg`}>
-                <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>태양 고도각</div>
+              <div className={`bg-blue-900 p-3 rounded-lg`}>
+                <div className={`text-xs text-gray-300`}>태양 고도각</div>
                 <div className="text-lg font-bold text-blue-600">{results.elevation}°</div>
               </div>
-              <div className={`${isDarkMode ? 'bg-orange-900' : 'bg-orange-50'} p-3 rounded-lg`}>
-                <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>태양 방위각</div>
+              <div className={`bg-orange-900 p-3 rounded-lg`}>
+                <div className={`text-xs text-gray-300`}>태양 방위각</div>
                 <div className="text-lg font-bold text-orange-600">{results.azimuth}°</div>
               </div>
             </div>
 
-            <div className={`${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-lg`}>
-              <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>실제 그림자 길이</div>
-              <div className={`text-lg font-bold ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+            <div className={`bg-gray-700 p-3 rounded-lg`}>
+              <div className={`text-xs text-gray-300`}>실제 그림자 길이</div>
+              <div className={`text-lg font-bold text-gray-200`}>
                 {results.effectiveShadow} m
               </div>
-              <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <div className={`text-xs text-gray-400`}>
                 기하학적: {results.shadowLength}m
               </div>
             </div>
 
-            <div className={`${isDarkMode ? 'bg-purple-900' : 'bg-purple-50'} p-3 rounded-lg`}>
-              <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>방향각 차이</div>
+            <div className={`bg-purple-900 p-3 rounded-lg`}>
+              <div className={`text-xs text-gray-300`}>방향각 차이</div>
               <div className="text-lg font-bold text-purple-600">{results.angleDiff}°</div>
-              <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <div className={`text-xs text-gray-400`}>
                 {results.directImpact ? '직접 영향' : '간접 영향'}
               </div>
             </div>
 
-            <div className={`${isDarkMode ? 'bg-yellow-900' : 'bg-yellow-50'} p-3 rounded-lg`}>
-              <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>패널 차폐율</div>
+            <div className={`bg-yellow-900 p-3 rounded-lg`}>
+              <div className={`text-xs text-gray-300`}>패널 차폐율</div>
               <div className="text-lg font-bold text-yellow-600">{results.shadingPercentage}%</div>
-              <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <div className={`text-xs text-gray-400`}>
                 방향 보정: {results.orientationFactor}%
               </div>
             </div>
 
-            <div className={`${isDarkMode ? 'bg-red-900' : 'bg-red-50'} p-3 rounded-lg`}>
-              <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>예상 발전량 손실</div>
+            <div className={`bg-red-900 p-3 rounded-lg`}>
+              <div className={`text-xs text-gray-300`}>예상 발전량 손실</div>
               <div className="text-lg font-bold text-red-600">{results.powerLoss}%</div>
-              <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <div className={`text-xs text-gray-400`}>
                 {parseFloat(results.powerLoss) < 5 ? '미미한 손실' : 
                  parseFloat(results.powerLoss) < 20 ? '경미한 손실' : '상당한 손실'}
               </div>
@@ -794,32 +848,32 @@ const SolarShadowCalculator = () => {
 
             {/* 다중 패널 시스템 결과 */}
             {results.multiPanel && (
-              <div className={`${isDarkMode ? 'bg-gradient-to-r from-indigo-900 to-purple-900' : 'bg-gradient-to-r from-indigo-50 to-purple-50'} p-4 rounded-lg border-2 ${isDarkMode ? 'border-indigo-700' : 'border-indigo-200'}`}>
+              <div className={`bg-gradient-to-r from-indigo-900 to-purple-900 p-4 rounded-lg border-2 border-indigo-700`}>
                 <h3 className="text-sm font-semibold mb-3 text-indigo-600">🏢 다중 패널 시스템 분석</h3>
                 
                 <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-2 rounded`}>
-                    <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>총 패널 수</div>
+                  <div className={`bg-gray-800 p-2 rounded`}>
+                    <div className={`text-xs text-gray-300`}>총 패널 수</div>
                     <div className="text-lg font-bold text-indigo-600">{results.multiPanel.totalPanels}장</div>
                   </div>
-                  <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-2 rounded`}>
-                    <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>영향받는 패널</div>
+                  <div className={`bg-gray-800 p-2 rounded`}>
+                    <div className={`text-xs text-gray-300`}>영향받는 패널</div>
                     <div className="text-lg font-bold text-orange-600">{results.multiPanel.affectedPanels}장</div>
                   </div>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-2 rounded`}>
-                    <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>전체 시스템 손실</div>
+                  <div className={`bg-gray-800 p-2 rounded`}>
+                    <div className={`text-xs text-gray-300`}>전체 시스템 손실</div>
                     <div className="text-lg font-bold text-red-600">{results.multiPanel.totalPowerLoss}%</div>
                   </div>
-                  <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-2 rounded`}>
-                    <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>영향 패널 비율</div>
+                  <div className={`bg-gray-800 p-2 rounded`}>
+                    <div className={`text-xs text-gray-300`}>영향 패널 비율</div>
                     <div className="text-lg font-bold text-yellow-600">{results.multiPanel.affectedPercentage}%</div>
                   </div>
                 </div>
                 
-                <div className={`mt-3 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                <div className={`mt-3 text-xs text-gray-400`}>
                   옥상 그림자 깊이: {results.multiPanel.shadowOnRoof}m
                 </div>
               </div>
@@ -853,27 +907,28 @@ const SolarShadowCalculator = () => {
             </div>
             
             <div className="grid gap-1" style={{gridTemplateColumns: `repeat(${inputs.panelCols}, 1fr)`}}>
-              {results.multiPanel.shadingMap.map((row, rowIndex) => 
+              {(results.multiPanel?.shadingMap || []).map((row, rowIndex) => 
                 row.map((shadingPercentage, colIndex) => {
+                  const safeShadingPercentage = shadingPercentage || 0;
                   let bgColor = 'bg-green-500';
-                  if (shadingPercentage >= 50) bgColor = 'bg-red-500';
-                  else if (shadingPercentage >= 20) bgColor = 'bg-orange-500';
-                  else if (shadingPercentage >= 5) bgColor = 'bg-yellow-500';
+                  if (safeShadingPercentage >= 50) bgColor = 'bg-red-500';
+                  else if (safeShadingPercentage >= 20) bgColor = 'bg-orange-500';
+                  else if (safeShadingPercentage >= 5) bgColor = 'bg-yellow-500';
                   
                   return (
                     <div
                       key={`${rowIndex}-${colIndex}`}
                       className={`${bgColor} w-6 h-6 rounded text-xs flex items-center justify-center text-white font-bold`}
-                      title={`Row ${rowIndex + 1}, Col ${colIndex + 1}: ${shadingPercentage.toFixed(1)}% 차폐`}
+                      title={`Row ${rowIndex + 1}, Col ${colIndex + 1}: ${safeShadingPercentage.toFixed(1)}% 차폐`}
                     >
-                      {shadingPercentage >= 5 ? shadingPercentage.toFixed(0) : ''}
+                      {safeShadingPercentage >= 5 ? safeShadingPercentage.toFixed(0) : ''}
                     </div>
                   );
                 })
               )}
             </div>
             
-            <div className={`mt-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            <div className={`mt-2 text-xs text-gray-400`}>
               * 각 사각형은 개별 패널을 나타내며, 숫자는 차폐율(%)입니다. (5% 미만은 숫자 생략)
             </div>
           </div>
@@ -885,7 +940,7 @@ const SolarShadowCalculator = () => {
         <h2 className="text-xl font-semibold mb-4">시간별 그림자 영향 ({monthNames[inputs.month - 1]})</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-13 gap-2">
           {hourlyData.map((data, index) => (
-            <div key={index} className={`border ${isDarkMode ? 'border-gray-600' : 'border-gray-200'} rounded-lg p-2 text-center`}>
+            <div key={index} className={`border border-gray-600 rounded-lg p-2 text-center`}>
               <div className="font-semibold text-sm mb-1">{data.hour}시</div>
               <div className="text-xs space-y-1">
                 <div>고도: {data.elevation}°</div>
@@ -911,21 +966,21 @@ const SolarShadowCalculator = () => {
         <h2 className="text-xl font-semibold mb-4">연간 그림자 영향 분석</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
           {yearlyData.map((data, index) => (
-            <div key={index} className={`border ${isDarkMode ? 'border-gray-600' : 'border-gray-200'} rounded-lg p-4`}>
+            <div key={index} className={`border border-gray-600 rounded-lg p-4`}>
               <div className="font-semibold text-center mb-2">{monthNames[data.month - 1]}</div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">{data.avgLoss}%</div>
-                <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>평균 손실</div>
+                <div className={`text-xs text-gray-400`}>평균 손실</div>
               </div>
               <div className="mt-2 space-y-1">
                 {data.details.map((detail, i) => (
                   <div key={i} className="text-xs flex justify-between">
                     <span>{detail.hour}시</span>
                     <span className={`font-semibold ${
-                      detail.powerLoss < 5 ? 'text-green-600' : 
-                      detail.powerLoss < 20 ? 'text-yellow-600' : 'text-red-600'
+                      (detail.powerLoss || 0) < 5 ? 'text-green-600' : 
+                      (detail.powerLoss || 0) < 20 ? 'text-yellow-600' : 'text-red-600'
                     }`}>
-                      {detail.powerLoss.toFixed(1)}%
+                      {(detail.powerLoss || 0).toFixed(1)}%
                     </span>
                   </div>
                 ))}
@@ -936,12 +991,12 @@ const SolarShadowCalculator = () => {
       </div>
 
       {/* 개선 권장사항 */}
-      <div className={`mt-6 ${isDarkMode ? 'bg-gradient-to-r from-green-900 to-blue-900' : 'bg-gradient-to-r from-green-50 to-blue-50'} rounded-lg p-6`}>
+      <div className={`mt-6 bg-gradient-to-r from-green-900 to-blue-900 rounded-lg p-6`}>
         <h3 className="text-lg font-semibold mb-3">💡 3D 분석 기반 개선 권장사항</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
           <div>
             <strong>🧭 방향 최적화:</strong>
-            <ul className={`mt-1 space-y-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+            <ul className={`mt-1 space-y-1 text-gray-300`}>
               <li>• 현재 건물-태양 각도차: {results.angleDiff}°</li>
               <li>• {parseFloat(results.angleDiff) > 90 ? '간접 영향으로 손실 감소' : '직접 영향으로 주의 필요'}</li>
               <li>• 패널을 {inputs.panelOrientation < 180 ? '서쪽' : '동쪽'}으로 {Math.abs(180 - inputs.panelOrientation) > 30 ? '크게 ' : ''}조정 고려</li>
@@ -949,7 +1004,7 @@ const SolarShadowCalculator = () => {
           </div>
           <div>
             <strong>📐 각도 조정:</strong>
-            <ul className={`mt-1 space-y-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+            <ul className={`mt-1 space-y-1 text-gray-300`}>
               <li>• 현재 패널 기울기: {inputs.panelTilt}°</li>
               <li>• {inputs.panelTilt < 25 ? '기울기 증가로 그림자 회피 가능' : inputs.panelTilt > 40 ? '기울기 감소로 효율 향상' : '적정 기울기 유지'}</li>
               <li>• 계절별 최적 각도 추적 시스템 검토</li>
@@ -957,7 +1012,7 @@ const SolarShadowCalculator = () => {
           </div>
           <div>
             <strong>🏗️ 구조적 개선:</strong>
-            <ul className={`mt-1 space-y-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+            <ul className={`mt-1 space-y-1 text-gray-300`}>
               <li>• 설치 높이 {Math.max(0, Math.ceil(parseFloat(results.effectiveShadow || 0) - inputs.distance)).toFixed(0)}m 상승 고려</li>
               <li>• 그림자 영향 시간: {hourlyData.filter(h => parseFloat(h.powerLoss) > 10).length}시간/일</li>
               <li>• 최악 손실 시간대: {hourlyData.reduce((max, h) => parseFloat(h.powerLoss) > parseFloat(max.powerLoss) ? h : max, {powerLoss: 0}).hour || 'N/A'}시</li>
@@ -966,7 +1021,7 @@ const SolarShadowCalculator = () => {
           {results.multiPanel && (
             <div>
               <strong>🏢 다중 패널 최적화:</strong>
-              <ul className={`mt-1 space-y-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <ul className={`mt-1 space-y-1 text-gray-300`}>
                 <li>• 영향받는 패널: {results.multiPanel.affectedPanels}/{results.multiPanel.totalPanels}장</li>
                 <li>• {parseFloat(results.multiPanel.affectedPercentage) > 30 ? '전체 배치 재검토 필요' : parseFloat(results.multiPanel.affectedPercentage) > 10 ? '부분적 배치 조정 권장' : '현재 배치 적절'}</li>
                 <li>• 옥상 그림자 침투: {results.multiPanel.shadowOnRoof}m</li>
@@ -975,8 +1030,8 @@ const SolarShadowCalculator = () => {
           )}
         </div>
         
-        <div className={`mt-4 p-4 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg border ${isDarkMode ? 'border-gray-600' : 'border-blue-200'}`}>
-          <h4 className={`font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-800'} mb-2`}>📊 종합 분석 결과</h4>
+        <div className={`mt-4 p-4 bg-gray-800 rounded-lg border border-gray-600`}>
+          <h4 className={`font-semibold text-blue-400 mb-2`}>📊 종합 분석 결과</h4>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
             <div>
               <span className="font-medium">연평균 손실:</span>
@@ -1014,8 +1069,8 @@ const SolarShadowCalculator = () => {
           </div>
           
           {results.multiPanel && (
-            <div className={`mt-3 pt-3 border-t ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-              <h5 className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mb-2`}>💰 경제성 분석 (추정)</h5>
+            <div className={`mt-3 pt-3 border-t border-gray-600`}>
+              <h5 className={`font-medium text-gray-300 mb-2`}>💰 경제성 분석 (추정)</h5>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                 <div>
                   <span>정상 발전 패널: </span>
@@ -1024,12 +1079,12 @@ const SolarShadowCalculator = () => {
                 <div>
                   <span>연간 손실 전력량: </span>
                   <span className="font-bold text-red-600">~{(parseFloat(results.multiPanel.totalPowerLoss) * 0.3).toFixed(1)}MWh</span>
-                  <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}> (추정)</span>
+                  <span className={`text-gray-400`}> (추정)</span>
                 </div>
                 <div>
                   <span>개선 후 예상 효과: </span>
                   <span className="font-bold text-blue-600">+{(parseFloat(results.multiPanel.totalPowerLoss) * 0.7).toFixed(1)}%</span>
-                  <span className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}> (최대)</span>
+                  <span className={`text-gray-400`}> (최대)</span>
                 </div>
               </div>
             </div>
