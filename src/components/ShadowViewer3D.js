@@ -317,11 +317,15 @@ const ShadowViewer3D = ({
     // 향상된 조명 설정
     const sunLight = new THREE.DirectionalLight(0xffffff, realisticMode ? 3 : 1);
     const sunAngle = (currentTime - 12) * 15 * Math.PI / 180;
-    sunLight.position.set(
-      Math.sin(sunAngle) * 150,
-      Math.cos(sunAngle) * 80 + 60,
-      0
-    );
+    
+    // 태양광 패널 건물(25, 0, 0)을 기준으로 태양 위치 계산
+    // 동쪽(6시)에서 서쪽(18시)로 이동
+    const solarBuildingX = 25; // 태양광 패널 건물의 X 좌표
+    const sunX = solarBuildingX + Math.sin(sunAngle) * 150; // 건물 기준으로 동서 이동
+    const sunY = Math.cos(sunAngle) * 80 + 60; // 높이는 시간에 따라 포물선
+    const sunZ = 0; // Z축은 고정 (남북 방향은 변경 없음)
+    
+    sunLight.position.set(sunX, sunY, sunZ);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = realisticMode ? 4096 : 2048;
     sunLight.shadow.mapSize.height = realisticMode ? 4096 : 2048;
@@ -873,11 +877,14 @@ const ShadowViewer3D = ({
         
         // 태양 위치 업데이트
         const sunAngle = (nextTime - 12) * 15 * Math.PI / 180;
-        const newSunPosition = new THREE.Vector3(
-          Math.sin(sunAngle) * 150,
-          Math.cos(sunAngle) * 80 + 60,
-          0
-        );
+        
+        // 태양광 패널 건물(25, 0, 0)을 기준으로 태양 위치 계산
+        const solarBuildingX = 25;
+        const sunX = solarBuildingX + Math.sin(sunAngle) * 150;
+        const sunY = Math.cos(sunAngle) * 80 + 60;
+        const sunZ = 0;
+        
+        const newSunPosition = new THREE.Vector3(sunX, sunY, sunZ);
         
         sunLightRef.current.position.copy(newSunPosition);
         
