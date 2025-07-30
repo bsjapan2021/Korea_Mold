@@ -55,8 +55,8 @@ const SolarShadowCalculator = () => {
     buildingOrientation: 180, // 높은 건물이 태양광 건물에서 보는 방향 (도, 0=북, 90=동, 180=남, 270=서)
     
     distance: 20, // 건물 간 거리 (m)
-    panelWidth: 10, // 태양광 패널 폭 (m)
-    panelDepth: 8, // 태양광 패널 높이 (m)
+    panelWidth: 2, // 태양광 패널 폭 (m)
+    panelDepth: 1, // 태양광 패널 높이 (m)
     roofWidth: 50, // 옥상 전체 폭 (m)
     roofDepth: 30, // 옥상 전체 높이 (m)
     panelCount: 150, // 총 패널 수량

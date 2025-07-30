@@ -292,6 +292,23 @@ const ShadowViewer3D = ({
     };
   }, [buildingHeight, buildingWidth, buildingDepth, solarBuildingHeight, solarBuildingWidth, solarBuildingDepth, buildingDistance, buildingLayout, panelTilt, panelAzimuth, currentTime, viewMode]);
 
+  // 태양 위치 업데이트 (애니메이션 시간 변경 시)
+  useEffect(() => {
+    if (sunLightRef.current && sunRef.current) {
+      const time = viewMode === 'animation' ? animationTime : currentTime;
+      const sunAngle = (time - 12) * 15 * Math.PI / 180;
+      const newPosition = new THREE.Vector3(
+        Math.sin(sunAngle) * 150, // 거리 증가 (100→150)
+        Math.cos(sunAngle) * 80 + 60, // 높이 증가 (50+30→80+60)
+        0
+      );
+      
+      sunLightRef.current.position.copy(newPosition);
+      sunRef.current.position.copy(newPosition);
+      sunRef.current.position.multiplyScalar(0.3);
+    }
+  }, [animationTime, currentTime, viewMode]);
+
   const handleViewModeChange = (mode) => {
     setViewMode(mode);
   };
@@ -299,45 +316,45 @@ const ShadowViewer3D = ({
   const startAnimation = useCallback(() => {
     if (!isAnimating) {
       setIsAnimating(true);
-      let currentTime = 6;
-      
+      setAnimationTime(6); // 시작 시간 초기화
+    }
+  }, [isAnimating]);
+
+  // 애니메이션 실행 로직을 별도 useEffect로 분리
+  useEffect(() => {
+    let timeoutId;
+    
+    if (isAnimating) {
       const animate = () => {
         setAnimationTime(prevTime => {
-          currentTime = prevTime + (0.1 * animationSpeed); // 속도 적용
-          if (currentTime > 18) {
+          const nextTime = prevTime + (0.1 * animationSpeed);
+          
+          if (nextTime > 18) {
             if (isLooping) {
               // 반복 모드: 다시 6시부터 시작
               return 6;
             } else {
               // 단일 실행 모드: 애니메이션 정지
               setIsAnimating(false);
-              return 6;
+              return 18;
             }
           }
           
-          if (sunLightRef.current && sunRef.current) {
-            const sunAngle = (currentTime - 12) * 15 * Math.PI / 180;
-            const newPosition = new THREE.Vector3(
-              Math.sin(sunAngle) * 150, // 거리 증가 (100→150)
-              Math.cos(sunAngle) * 80 + 60, // 높이 증가 (50+30→80+60)
-              0
-            );
-            
-            sunLightRef.current.position.copy(newPosition);
-            sunRef.current.position.copy(newPosition);
-            sunRef.current.position.multiplyScalar(0.3);
-          }
-          
-          return currentTime;
+          return nextTime;
         });
         
-        if (currentTime <= 18) {
-          setTimeout(animate, 100);
-        }
+        // 계속 애니메이션 실행
+        timeoutId = setTimeout(animate, 100);
       };
       
-      animate();
+      timeoutId = setTimeout(animate, 100);
     }
+    
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [isAnimating, isLooping, animationSpeed]);
 
   const stopAnimation = useCallback(() => {
