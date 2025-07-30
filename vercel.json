@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "name": "solar-shadow-calculator",
   "builds": [
     {
       "src": "package.json",

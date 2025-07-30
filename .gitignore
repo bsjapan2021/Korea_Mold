@@ -87,3 +87,4 @@ temp/
 *.swp
 *.swo
 *~
+.vercel
