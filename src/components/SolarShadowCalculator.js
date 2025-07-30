@@ -76,6 +76,13 @@ const SolarShadowCalculator = () => {
   const [yearlyData, setYearlyData] = useState([]);
   const [hourlyData, setHourlyData] = useState([]);
   const [heatmapViewMode, setHeatmapViewMode] = useState('2d'); // '2d' 또는 '3d'
+  
+  // 사용자 정의 건물 배치 상태
+  const [customBuildings, setCustomBuildings] = useState([
+    { id: 1, x: 0, z: -20, orientation: 180, name: '건물 1' }
+  ]);
+  const [selectedBuilding, setSelectedBuilding] = useState(null);
+  const [isEditingBuildings, setIsEditingBuildings] = useState(false);
 
   // 도시 선택 시 위도 업데이트
   const handleCityChange = (city) => {
@@ -135,12 +142,58 @@ const SolarShadowCalculator = () => {
     const pattern = buildingLayoutPatterns[inputs.buildingLayoutPattern];
     if (!pattern) return [];
     
+    // 사용자 정의 패턴인 경우 customBuildings 사용
+    if (inputs.buildingLayoutPattern === 'custom') {
+      return customBuildings.map(building => ({
+        ...building,
+        x: building.x,
+        z: building.z,
+        orientation: building.orientation
+      }));
+    }
+    
     return pattern.buildings.map(building => ({
       ...building,
       // 거리 조정
       x: building.x || inputs.distance * Math.sin(building.orientation * Math.PI / 180),
       z: building.z || -inputs.distance * Math.cos(building.orientation * Math.PI / 180)
     }));
+  };
+
+  // 건물 조작 함수들
+  const addCustomBuilding = () => {
+    const newId = Math.max(...customBuildings.map(b => b.id), 0) + 1;
+    const newBuilding = {
+      id: newId,
+      x: 0,
+      z: -20,
+      orientation: 180,
+      name: `건물 ${newId}`
+    };
+    setCustomBuildings(prev => [...prev, newBuilding]);
+  };
+
+  const updateBuildingPosition = (id, x, z) => {
+    setCustomBuildings(prev => 
+      prev.map(building => 
+        building.id === id ? { ...building, x, z } : building
+      )
+    );
+  };
+
+  const updateBuildingOrientation = (id, orientation) => {
+    setCustomBuildings(prev => 
+      prev.map(building => 
+        building.id === id ? { ...building, orientation } : building
+      )
+    );
+  };
+
+  const removeCustomBuilding = (id) => {
+    setCustomBuildings(prev => prev.filter(building => building.id !== id));
+    if (selectedBuilding?.id === id) {
+      setSelectedBuilding(null);
+    }
   };
 
   // 태양 고도각 계산
@@ -842,6 +895,91 @@ const SolarShadowCalculator = () => {
                 )}
               </div>
             </div>
+
+            {/* 사용자 정의 건물 편집 섹션 */}
+            {inputs.buildingLayoutPattern === 'custom' && (
+              <div className="bg-yellow-900/20 p-3 rounded-lg border border-yellow-700/30">
+                <h4 className="text-sm font-semibold text-yellow-300 mb-3 flex items-center">
+                  🏗️ 사용자 정의 건물 편집
+                </h4>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-300">현재 건물 수: {customBuildings.length}개</span>
+                    <button
+                      onClick={addCustomBuilding}
+                      className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded-md transition-colors"
+                    >
+                      + 건물 추가
+                    </button>
+                  </div>
+                  
+                  {customBuildings.map((building, index) => (
+                    <div key={building.id} className="bg-gray-800/50 p-3 rounded border border-gray-600">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-yellow-300">{building.name}</span>
+                        <button
+                          onClick={() => removeCustomBuilding(building.id)}
+                          className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">X 위치 (m)</label>
+                          <input
+                            type="number"
+                            value={building.x}
+                            onChange={(e) => updateBuildingPosition(building.id, Number(e.target.value), building.z)}
+                            className={`w-full px-2 py-1 border rounded text-xs ${inputClass}`}
+                            step="1"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">Z 위치 (m)</label>
+                          <input
+                            type="number"
+                            value={building.z}
+                            onChange={(e) => updateBuildingPosition(building.id, building.x, Number(e.target.value))}
+                            className={`w-full px-2 py-1 border rounded text-xs ${inputClass}`}
+                            step="1"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">방향 (°)</label>
+                          <select
+                            value={building.orientation}
+                            onChange={(e) => updateBuildingOrientation(building.id, Number(e.target.value))}
+                            className={`w-full px-2 py-1 border rounded text-xs ${inputClass}`}
+                          >
+                            <option value={0}>북 (0°)</option>
+                            <option value={90}>동 (90°)</option>
+                            <option value={180}>남 (180°)</option>
+                            <option value={270}>서 (270°)</option>
+                          </select>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-2 text-xs text-gray-400">
+                        <span>위치: ({building.x}, {building.z}), 방향: {building.orientation}°</span>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <div className="bg-yellow-800/30 p-2 rounded text-xs text-yellow-200">
+                    <p><strong>💡 사용법:</strong></p>
+                    <ul className="mt-1 space-y-0.5 ml-3">
+                      <li>• X: 동서 방향 (-는 서쪽, +는 동쪽)</li>
+                      <li>• Z: 남북 방향 (-는 북쪽, +는 남쪽)</li>
+                      <li>• 태양광 건물은 (25, 0) 위치에 고정</li>
+                      <li>• 방향: 건물이 태양광 건물을 바라보는 방향</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>
