@@ -1,0 +1,16 @@
+{
+  "short_name": "태양광 계산기",
+  "name": "3D 태양광 패널 그림자 영향 계산기",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff",
+  "description": "건물 방향과 패널 각도를 고려한 정밀한 태양광 패널 그림자 분석 도구"
+}
