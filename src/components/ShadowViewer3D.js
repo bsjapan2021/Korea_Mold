@@ -12,6 +12,10 @@ const ShadowViewer3D = ({
   buildingLayout = [], // 건물 배치 정보 배열
   panelTilt = 30, 
   panelAzimuth = 180,
+  panelRows = 15,    // 패널 행 수
+  panelCols = 10,    // 패널 열 수  
+  panelWidth = 2,    // 패널 폭
+  panelDepth = 1,    // 패널 깊이
   currentTime = 12,
   shadowLoss = 0
 }) => {
@@ -142,9 +146,6 @@ const ShadowViewer3D = ({
 
     // 태양광 패널 그룹 생성
     const panelGroup = new THREE.Group();
-    const panelRows = 5;
-    const panelCols = 8;
-    const panelWidth = 2;
     const panelHeight = 1;
     const panelSpacing = 0.2;
 
@@ -290,7 +291,7 @@ const ShadowViewer3D = ({
       }
       renderer.dispose();
     };
-  }, [buildingHeight, buildingWidth, buildingDepth, solarBuildingHeight, solarBuildingWidth, solarBuildingDepth, buildingDistance, buildingLayout, panelTilt, panelAzimuth, currentTime, viewMode]);
+  }, [buildingHeight, buildingWidth, buildingDepth, solarBuildingHeight, solarBuildingWidth, solarBuildingDepth, buildingDistance, buildingLayout, panelTilt, panelAzimuth, panelRows, panelCols, panelWidth, panelDepth, currentTime, viewMode]);
 
   // 태양 위치 업데이트 (애니메이션 시간 변경 시)
   useEffect(() => {

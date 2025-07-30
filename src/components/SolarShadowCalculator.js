@@ -1377,6 +1377,10 @@ const SolarShadowCalculator = () => {
                 buildingLayout={getCurrentBuildingLayout()}
                 panelTilt={inputs.panelTilt}
                 panelAzimuth={inputs.panelOrientation}
+                panelRows={inputs.panelRows}
+                panelCols={inputs.panelCols}
+                panelWidth={inputs.panelWidth}
+                panelDepth={inputs.panelDepth}
                 currentTime={inputs.hour}
                 shadowLoss={results.averageLoss || 0}
               />
