@@ -508,7 +508,7 @@ const SolarShadowCalculator = () => {
       <div className="text-center mb-8">
         <h1 className={`text-3xl font-bold ${textClass} flex items-center justify-center gap-2 mb-2`}>
           <Sun className="text-orange-500" />
-          3D 태양광 패널 그림자 영향 계산기
+          (주)K&C 가람 3D태양광 패널 그림자 영향 계산기
           <Building className="text-blue-500" />
         </h1>
         <p className="text-gray-300">
