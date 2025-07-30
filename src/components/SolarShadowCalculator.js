@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sun, Building, Info, Compass } from 'lucide-react';
+import WeatherWidget from './WeatherWidget';
 
 const SolarShadowCalculator = () => {
   // 대한민국 주요 도시 위도 데이터
@@ -591,6 +592,11 @@ const SolarShadowCalculator = () => {
             📊 정밀 손실률 분석
           </span>
         </div>
+      </div>
+
+      {/* 날씨 정보 위젯 */}
+      <div className="mb-8">
+        <WeatherWidget />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
